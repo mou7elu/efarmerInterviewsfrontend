@@ -92,8 +92,44 @@ const EditProducteurPage = () => {
   const loadProducteurData = async () => {
     try {
       setLoading(true);
-      // Chargement via API (déjà implémenté)
-      setFormData(mockProducteur);
+      // Chargement via API
+      const response = await producteursAPI.getById(id);
+      console.log('Réponse API brute:', response);
+      
+      // Extraire les données (peut être response.data ou response directement)
+      const apiData = response?.data || response;
+      console.log('Données extraites:', apiData);
+      
+      // Helper pour extraire une valeur (gérer les objets Mongoose {_value, _maxLength})
+      const extractValue = (field) => {
+        if (field === null || field === undefined) return '';
+        if (typeof field === 'object' && field._value !== undefined) {
+          return field._value; // Objet Mongoose
+        }
+        return field; // Valeur simple
+      };
+      
+      // Normaliser les clés pour correspondre au formulaire
+      // L'API retourne: { id, code, nom, prenom, ... } (minuscules)
+      // Le formulaire attend: { Code, Nom, Prenom, ... } (majuscules)
+      const normalizedData = {
+        _id: apiData._id || apiData.id,
+        id: apiData._id || apiData.id,
+        Code: extractValue(apiData.code) || extractValue(apiData.Code) || '',
+        Nom: extractValue(apiData.nom) || extractValue(apiData.Nom) || '',
+        Prenom: extractValue(apiData.prenom) || extractValue(apiData.Prenom) || '',
+        Genre: apiData.genre || apiData.Genre || 1, // Par défaut: 1 (Homme)
+        Telephone1: extractValue(apiData.telephone1) || extractValue(apiData.Telephone1) || '',
+        Telephone2: extractValue(apiData.telephone2) || extractValue(apiData.Telephone2) || '',
+        Datnais: apiData.dateNaissance || apiData.Datnais || '',
+        Lieunais: extractValue(apiData.lieuNaissance) || extractValue(apiData.Lieunais) || '',
+        Photo: apiData.photo || apiData.Photo || null,
+        Signature: apiData.signature || apiData.Signature || null,
+        sommeil: apiData.sommeil || false
+      };
+      
+      console.log('Données normalisées pour le formulaire:', normalizedData);
+      setFormData(normalizedData);
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
       setErrors({ load: 'Erreur lors du chargement des données du producteur' });
@@ -156,8 +192,25 @@ const EditProducteurPage = () => {
 
     setSaving(true);
     try {
+      // Normaliser les données pour l'API (minuscules)
+      const apiPayload = {
+        code: formData.Code,
+        nom: formData.Nom,
+        prenom: formData.Prenom,
+        genre: formData.Genre,
+        telephone1: formData.Telephone1,
+        telephone2: formData.Telephone2,
+        dateNaissance: formData.Datnais,
+        lieuNaissance: formData.Lieunais,
+        photo: formData.Photo,
+        signature: formData.Signature,
+        sommeil: formData.sommeil
+      };
+      
+      console.log('Payload envoyé à l\'API:', apiPayload);
+      
       // Mettre à jour via l'API
-      const response = await producteursAPI.update(formData._id || formData.id, formData);
+      const response = await producteursAPI.update(formData._id || formData.id, apiPayload);
       console.log('Mise à jour réussie:', response);
       await new Promise(resolve => setTimeout(resolve, 1000));
       

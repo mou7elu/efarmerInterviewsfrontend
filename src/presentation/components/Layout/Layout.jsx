@@ -96,6 +96,7 @@ const Layout = () => {
 
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    { text: 'SIG', icon: <LocationIcon />, path: '/sig' },
     { text: 'Entretiens', icon: <InterviewIcon />, path: '/interviews' },
     { text: 'Producteurs', icon: <AgricultureIcon />, path: '/producteurs' },
     { text: 'Parcelles', icon: <TerrainIcon />, path: '/parcelles' },

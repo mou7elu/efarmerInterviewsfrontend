@@ -60,6 +60,7 @@ import VoletsPage from '@presentation/pages/Volets/VoletsPage.jsx';
 import CreateVoletPage from '@presentation/pages/Volets/CreateVoletPage.jsx';
 import EditVoletPage from '@presentation/pages/Volets/EditVoletPage.jsx';
 import VoletDetailPage from '@presentation/pages/Volets/VoletDetailPage.jsx';
+import SIGPage from '@presentation/pages/SIG/SIGPage.jsx';
 import ZonesInterditesPage from '@presentation/pages/ZonesInterdites/ZonesInterditesPage.jsx';
 import CreateZoneInterditePage from '@presentation/pages/ZonesInterdites/CreateZoneInterditePage.jsx';
 import EditZoneInterditePage from '@presentation/pages/ZonesInterdites/EditZoneInterditePage.jsx';
@@ -211,6 +212,8 @@ function App() {
             
             {/* Dashboard */}
             <Route path="dashboard" element={<DashboardPage />} />
+            {/* SIG - Système d'Information Géographique */}
+            <Route path="sig" element={<SIGPage />} />
             
             {/* Entretiens */}
             <Route path="interviews" element={<InterviewsPage />} />

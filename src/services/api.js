@@ -20,7 +20,7 @@ const getAuthHeaders = () => {
 };
 
 // Fonction générique pour les appels API
-const apiCall = async (url, options = {}) => {
+export const apiCall = async (url, options = {}) => {
   try {
     const config = {
       ...apiConfig,
