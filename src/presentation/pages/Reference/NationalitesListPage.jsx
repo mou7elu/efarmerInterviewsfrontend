@@ -1,10 +1,10 @@
 /**
  * Nationalités List Page
  * Page de gestion des nationalités (CRUD)
+ * Harmonisée avec le design pattern établi
  */
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -20,7 +20,6 @@ import {
   Button,
   Box,
   TextField,
-  Alert,
   Tooltip,
   Dialog,
   DialogTitle,
@@ -29,42 +28,35 @@ import {
   Grid,
   Card,
   CardContent,
-  Fab,
-  Chip,
-  Avatar,
-  Breadcrumbs,
-  Link
+  Fab
 } from '@mui/material';
 import { nationalitesAPI, handleApiError } from '@/services/api.js';
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  Visibility as ViewIcon,
   Delete as DeleteIcon,
   Search as SearchIcon,
-  Public as PublicIcon,
-  Flag as FlagIcon,
-  People as PeopleIcon,
-  NavigateNext as NavigateNextIcon
+  Public as PublicIcon
 } from '@mui/icons-material';
 
 import LoadingSpinner from '@presentation/components/Common/LoadingSpinner.jsx';
 
+
 const NationalitesListPage = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  
-  // État local
+  // États pour les données
   const [nationalites, setNationalites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  
+  // États pour la pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const [error, setError] = useState('');
   
-  // États pour les modals
+  // États pour la recherche
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // États pour les dialogs
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -72,21 +64,8 @@ const NationalitesListPage = () => {
   
   // États pour le formulaire
   const [formData, setFormData] = useState({
-    nom: '',
-    code: '',
-    paysOrigine: '',
-    actif: true
+    Lib_Nation: ''
   });
-
-
-
-  useEffect(() => {
-    if (location.state?.message) {
-      setSuccessMessage(location.state.message);
-      // Clear the message from location state
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state]);
 
   useEffect(() => {
     loadData();
@@ -94,16 +73,17 @@ const NationalitesListPage = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setError('');
     try {
       const response = await nationalitesAPI.getAll({
-        search: searchTerm,
-        page: page + 1,
-        limit: rowsPerPage
+        limit:2000
       });
       
       const data = response.data || response;
-      setNationalites(Array.isArray(data) ? data : data.items || []);
-      setTotalCount(data.total || data.length || 0);
+      const items = Array.isArray(data) ? data : data.items || [];
+      
+      setNationalites(items);
+      setTotalCount(data.total || items.length);
     } catch (error) {
       console.error('Erreur lors du chargement des nationalités:', error);
       setError(handleApiError(error));
@@ -132,37 +112,39 @@ const NationalitesListPage = () => {
 
   const resetForm = () => {
     setFormData({
-      nom: '',
-      code: '',
-      paysOrigine: '',
-      actif: true
+      Lib_Nation: ''
     });
   };
 
-  const handleCreate = () => {
-    navigate('/nationalites/new');
+  const handleCreateClick = () => {
+    resetForm();
+    setCreateDialogOpen(true);
   };
 
-  const handleEdit = (nationalite) => {
-    navigate(`/nationalites/${nationalite.id}/edit`);
+  const handleEditClick = (nationalite) => {
+    setSelectedNationalite(nationalite);
+    setFormData({
+      Lib_Nation: nationalite.Lib_Nation || ''
+    });
+    setEditDialogOpen(true);
   };
 
-  const handleView = (nationalite) => {
-    navigate(`/nationalites/${nationalite.id}`);
-  };
-
-  const handleDelete = (nationalite) => {
+  const handleDeleteClick = (nationalite) => {
     setSelectedNationalite(nationalite);
     setDeleteDialogOpen(true);
   };
 
   const handleSubmitCreate = async () => {
+    if (!formData.Lib_Nation || formData.Lib_Nation.trim() === '') {
+      setError('Le libellé de la nationalité est requis');
+      return;
+    }
+
     try {
       await nationalitesAPI.create(formData);
       setCreateDialogOpen(false);
       resetForm();
       await loadData();
-      setSuccessMessage('Nationalité créée avec succès');
     } catch (error) {
       console.error('Erreur lors de la création:', error);
       setError(handleApiError(error));
@@ -170,13 +152,18 @@ const NationalitesListPage = () => {
   };
 
   const handleSubmitEdit = async () => {
+    if (!formData.Lib_Nation || formData.Lib_Nation.trim() === '') {
+      setError('Le libellé de la nationalité est requis');
+      return;
+    }
+
     try {
-      await nationalitesAPI.update(selectedNationalite.id, formData);
+      const nationaliteId = selectedNationalite.id || selectedNationalite._id;
+      await nationalitesAPI.update(nationaliteId, formData);
       setEditDialogOpen(false);
       setSelectedNationalite(null);
       resetForm();
       await loadData();
-      setSuccessMessage('Nationalité modifiée avec succès');
     } catch (error) {
       console.error('Erreur lors de la modification:', error);
       setError(handleApiError(error));
@@ -185,200 +172,137 @@ const NationalitesListPage = () => {
 
   const handleSubmitDelete = async () => {
     try {
-      await nationalitesAPI.delete(selectedNationalite.id);
+      const nationaliteId = selectedNationalite.id || selectedNationalite._id;
+      await nationalitesAPI.delete(nationaliteId);
       setDeleteDialogOpen(false);
       setSelectedNationalite(null);
       await loadData();
-      setSuccessMessage('Nationalité supprimée avec succès');
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       setError(handleApiError(error));
     }
   };
 
-  const getRegionStats = () => {
-    const regions = {
-      'Afrique de l\'Ouest': ['Ivoirienne', 'Ghanéenne', 'Burkinabè', 'Malienne', 'Sénégalaise', 'Guinéenne', 'Libérienne'],
-      'Europe': ['Française'],
-      'Autres': []
-    };
-
-    const stats = {};
-    Object.keys(regions).forEach(region => {
-      stats[region] = nationalites.filter(n => regions[region].includes(n.nom)).length;
-    });
-
-    return stats;
-  };
-
-  const getAvatarColor = (libNation) => {
-    const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4'];
-    if (!libNation || typeof libNation !== 'string') {
-      return colors[0]; // Couleur par défaut
-    }
-    return colors[libNation.charCodeAt(0) % colors.length];
-  };
+  const filteredNationalites = nationalites.filter(nationalite =>
+    nationalite.Lib_Nation?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) {
     return <LoadingSpinner size={60} message="Chargement des nationalités..." />;
   }
 
-  const regionStats = getRegionStats();
-
   return (
     <Container maxWidth="xl">
-      {successMessage && (
-        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccessMessage('')}>
-          {successMessage}
-        </Alert>
-      )}
-      
-      {/* En-tête avec breadcrumbs */}
-      <Box mb={4}>
-        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} mb={2}>
-          <Link color="inherit" href="/pays">
-            Données de référence
-          </Link>
-          <Typography color="text.primary">Nationalités</Typography>
-        </Breadcrumbs>
-        
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h4" component="h1">
-            Nationalités
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreate}
-          >
-            Nouvelle nationalité
-          </Button>
-        </Box>
-        
-        {/* Statistiques rapides */}
-        <Grid container spacing={2} mb={3}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <Typography variant="h4" color="primary">
-                  {totalCount}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Total nationalités
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-        </Grid>
+      {/* En-tête */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1">
+          <PublicIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+          Nationalités
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleCreateClick}
+        >
+          Nouvelle nationalité
+        </Button>
       </Box>
+
+      {/* Affichage erreur */}
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+
+      {/* Statistique */}
+      <Grid container spacing={2} mb={3}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="primary">
+                {totalCount}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Total nationalités
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Barre de recherche */}
       <Box mb={3}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              placeholder="Rechercher par nom..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
-              }}
-            />
-          </Grid>
-        </Grid>
+        <TextField
+          fullWidth
+          placeholder="Rechercher une nationalité..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+          }}
+        />
       </Box>
 
-      {/* Tableau des nationalités */}
+      {/* Tableau */}
       <Paper>
         <TableContainer>
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell>Nationalité</TableCell>
-                <TableCell>ID</TableCell>
-                <TableCell>Date de création</TableCell>
                 <TableCell align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {nationalites
+              {filteredNationalites
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((nationalite) => (
-                <TableRow key={nationalite.id} hover>
-                  <TableCell>
-                    <Box display="flex" alignItems="center">
-                      <Avatar
-                        sx={{ 
-                          mr: 2, 
-                          bgcolor: getAvatarColor(nationalite.Lib_Nation),
-                          width: 32,
-                          height: 32,
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        {nationalite.Lib_Nation ? nationalite.Lib_Nation.charAt(0).toUpperCase() : 'N'}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="body1" fontWeight="medium">
+                  <TableRow key={nationalite.id || nationalite._id} hover>
+                    <TableCell>
+                      <Box display="flex" alignItems="center">
+                        <PublicIcon sx={{ mr: 1, color: 'primary.main' }} />
+                        <Typography variant="body1">
                           {nationalite.Lib_Nation}
                         </Typography>
                       </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" fontFamily="monospace">
-                      {nationalite.id ? nationalite.id.slice(-8) : 'N/A'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(nationalite.createdAt).toLocaleDateString('fr-FR')}
-                    </Typography>
-                  </TableCell>
-
-                  <TableCell align="center">
-                    <Tooltip title="Voir les détails">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleView(nationalite)}
-                      >
-                        <ViewIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Modifier">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEdit(nationalite)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Supprimer">
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDelete(nationalite)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Modifier">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEditClick(nationalite)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Supprimer">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteClick(nationalite)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </TableContainer>
-        
+
         <TablePagination
           rowsPerPageOptions={[5, 10, 25, 50]}
           component="div"
-          count={totalCount}
+          count={filteredNationalites.length}
           rowsPerPage={rowsPerPage}
           page={page}
-          onPageChange={handlePageChange}
-          onRowsPerPageChange={handleRowsPerPageChange}
+          onPageChange={(event, newPage) => setPage(newPage)}
+          onRowsPerPageChange={(event) => {
+            setRowsPerPage(parseInt(event.target.value, 10));
+            setPage(0);
+          }}
           labelRowsPerPage="Lignes par page:"
           labelDisplayedRows={({ from, to, count }) => 
             `${from}-${to} sur ${count}`
@@ -391,62 +315,49 @@ const NationalitesListPage = () => {
         color="primary"
         aria-label="add"
         sx={{ position: 'fixed', bottom: 16, right: 16 }}
-        onClick={handleCreate}
+        onClick={handleCreateClick}
       >
         <AddIcon />
       </Fab>
 
+
       {/* Dialog de création */}
       <Dialog
         open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        maxWidth="md"
+        onClose={() => {
+          setCreateDialogOpen(false);
+          resetForm();
+          setError('');
+        }}
+        maxWidth="sm"
         fullWidth
       >
         <DialogTitle>Nouvelle nationalité</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Nom de la nationalité"
-                value={formData.nom}
-                onChange={(e) => handleFormChange('nom', e.target.value)}
-                required
-                placeholder="Ex: Ivoirienne, Française..."
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Code (ISO)"
-                value={formData.code}
-                onChange={(e) => handleFormChange('code', e.target.value.toUpperCase())}
-                required
-                inputProps={{ maxLength: 2 }}
-                placeholder="Ex: CI, FR..."
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Pays d'origine"
-                value={formData.paysOrigine}
-                onChange={(e) => handleFormChange('paysOrigine', e.target.value)}
-                required
-                placeholder="Ex: Côte d'Ivoire, France..."
-              />
-            </Grid>
-          </Grid>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Libellé de la nationalité"
+              value={formData.Lib_Nation}
+              onChange={(e) => handleFormChange('Lib_Nation', e.target.value)}
+              required
+              placeholder="Ex: Ivoirienne, Française, Malienne..."
+              autoFocus
+            />
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>
+          <Button onClick={() => {
+            setCreateDialogOpen(false);
+            resetForm();
+            setError('');
+          }}>
             Annuler
           </Button>
           <Button 
             onClick={handleSubmitCreate} 
             variant="contained"
-            disabled={!formData.nom || !formData.code || !formData.paysOrigine}
+            disabled={!formData.Lib_Nation || formData.Lib_Nation.trim() === ''}
           >
             Créer
           </Button>
@@ -456,51 +367,41 @@ const NationalitesListPage = () => {
       {/* Dialog de modification */}
       <Dialog
         open={editDialogOpen}
-        onClose={() => setEditDialogOpen(false)}
-        maxWidth="md"
+        onClose={() => {
+          setEditDialogOpen(false);
+          setSelectedNationalite(null);
+          resetForm();
+          setError('');
+        }}
+        maxWidth="sm"
         fullWidth
       >
         <DialogTitle>Modifier la nationalité</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Nom de la nationalité"
-                value={formData.nom}
-                onChange={(e) => handleFormChange('nom', e.target.value)}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Code (ISO)"
-                value={formData.code}
-                onChange={(e) => handleFormChange('code', e.target.value.toUpperCase())}
-                required
-                inputProps={{ maxLength: 2 }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Pays d'origine"
-                value={formData.paysOrigine}
-                onChange={(e) => handleFormChange('paysOrigine', e.target.value)}
-                required
-              />
-            </Grid>
-          </Grid>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Libellé de la nationalité"
+              value={formData.Lib_Nation}
+              onChange={(e) => handleFormChange('Lib_Nation', e.target.value)}
+              required
+              autoFocus
+            />
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>
+          <Button onClick={() => {
+            setEditDialogOpen(false);
+            setSelectedNationalite(null);
+            resetForm();
+            setError('');
+          }}>
             Annuler
           </Button>
           <Button 
             onClick={handleSubmitEdit} 
             variant="contained"
-            disabled={!formData.nom || !formData.code || !formData.paysOrigine}
+            disabled={!formData.Lib_Nation || formData.Lib_Nation.trim() === ''}
           >
             Modifier
           </Button>
@@ -510,20 +411,26 @@ const NationalitesListPage = () => {
       {/* Dialog de suppression */}
       <Dialog
         open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setSelectedNationalite(null);
+        }}
         maxWidth="sm"
       >
         <DialogTitle>Confirmer la suppression</DialogTitle>
         <DialogContent>
           <Typography>
-            Êtes-vous sûr de vouloir supprimer la nationalité "{selectedNationalite?.nom}" ?
+            Êtes-vous sûr de vouloir supprimer la nationalité <strong>"{selectedNationalite?.Lib_Nation}"</strong> ?
           </Typography>
-          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-            Cette action peut affecter les producteurs ayant cette nationalité.
+          <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+            Cette action est irréversible et peut affecter les producteurs ayant cette nationalité.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>
+          <Button onClick={() => {
+            setDeleteDialogOpen(false);
+            setSelectedNationalite(null);
+          }}>
             Annuler
           </Button>
           <Button 

@@ -1,0 +1,1866 @@
+import { 
+  Typography, 
+  Box, 
+  Paper, 
+  Accordion, 
+  AccordionSummary, 
+  AccordionDetails, 
+  List, 
+  ListItem, 
+  ListItemIcon, 
+  ListItemText, 
+  IconButton, 
+  Chip,
+  Divider,
+  Menu,
+  MenuItem,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  TextField,
+  Collapse,
+  Card,
+  CardContent,
+  Grid
+} from "@mui/material";
+import { 
+  ExpandMore as ExpandMoreIcon, 
+  Visibility as VisibilityIcon, 
+  VisibilityOff as VisibilityOffIcon,
+  Public as PublicIcon,
+  Dangerous as DangerousIcon,
+  Agriculture as AgricultureIcon,
+  ZoomIn as ZoomInIcon,
+  Download as DownloadIcon,
+  FileDownload as FileDownloadIcon,
+  FilterList as FilterListIcon,
+  Clear as ClearIcon,
+  Search as SearchIcon
+} from "@mui/icons-material";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { MapContainer, TileLayer, FeatureGroup, GeoJSON, LayersControl, useMap } from "react-leaflet";
+import L from "leaflet";
+import paysService from '../services/PaysService';
+import zoneinterditService from '../services/ZoneinterditService';
+import regionService from '../services/RegionService';
+import parcelleService from '../services/ParcelleService';
+import cooperativeService from '../services/CooperativeService';
+import producteurService from '../services/ProducteurService';
+import produitService from '../services/ProduitService';
+import normeService from '../services/NormeService';
+import "leaflet/dist/leaflet.css";
+import "leaflet-draw/dist/leaflet.draw.css";
+
+const Mapping = () => {
+  const [Payspolygons, setPaysPolygons] = useState(null);
+  const [Zoneinterditpolygons, setZoneinterditpolygons] = useState([]);
+  const [Regionpolygons, setRegionpolygons] = useState([]);
+  const [Plantationpolygons, setPlantationpolygons] = useState([]);
+  const [showPays, setShowPays] = useState(true);
+  const [showZoneInterdit, setShowZoneInterdit] = useState(true);
+  const [showRegion, setShowRegion] = useState(true);
+  const [showPlantation, setShowPlantation] = useState(true);
+  
+  // Nouveaux états pour contrôler l'affichage individuel
+  const [visibleZones, setVisibleZones] = useState({});
+  const [visibleRegions, setVisibleRegions] = useState({});
+  const [visiblePlantations, setVisiblePlantations] = useState({});
+  
+  // Référence pour la carte
+  const mapRef = useRef(null);
+  
+  // États pour les données de référence
+  const [producteurs, setProducteurs] = useState([]);
+  const [produits, setProduits] = useState([]);
+  const [normes, setNormes] = useState([]);
+
+  // États pour l'export
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState('geojson');
+  const [selectedPlantationsForExport, setSelectedPlantationsForExport] = useState([]);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState(null);
+
+  // États pour les filtres
+  const [filters, setFilters] = useState({
+    cooperative: '',
+    section: '',
+    localite: '',
+    codeProducteur: '',
+    nomProducteur: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Fonction pour zoomer vers un polygone spécifique
+  const zoomToPolygon = (coords) => {
+    if (!mapRef.current || !coords) return;
+    
+    try {
+      const layer = L.geoJSON(coords);
+      const bounds = layer.getBounds();
+      if (bounds.isValid()) {
+        mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+      }
+    } catch (error) {
+      console.error("Erreur lors du zoom:", error);
+    }
+  };
+
+  // Fonction pour basculer la visibilité d'une zone interdite
+  const toggleZoneVisibility = (zoneId) => {
+    setVisibleZones(prev => {
+      const newVisible = !prev[zoneId];
+      const updatedZones = {
+        ...prev,
+        [zoneId]: newVisible
+      };
+      
+      // Si on rend une zone visible et que le groupe n'est pas visible, l'activer
+      if (newVisible && !showZoneInterdit) {
+        setShowZoneInterdit(true);
+      }
+      
+      return updatedZones;
+    });
+  };
+
+  // Fonction pour basculer la visibilité d'une région
+  const toggleRegionVisibility = (regionId) => {
+    setVisibleRegions(prev => {
+      const newVisible = !prev[regionId];
+      const updatedRegions = {
+        ...prev,
+        [regionId]: newVisible
+      };
+      
+      // Si on rend une région visible et que le groupe n'est pas visible, l'activer
+      if (newVisible && !showRegion) {
+        setShowRegion(true);
+      }
+      
+      return updatedRegions;
+    });
+  };
+
+  // Fonction pour basculer la visibilité d'une plantation
+  const togglePlantationVisibility = (plantationId) => {
+    setVisiblePlantations(prev => {
+      const newVisible = !prev[plantationId];
+      const updatedPlantations = {
+        ...prev,
+        [plantationId]: newVisible
+      };
+      
+      // Si on rend une plantation visible et que le groupe n'est pas visible, l'activer
+      if (newVisible && !showPlantation) {
+        setShowPlantation(true);
+      }
+      
+      return updatedPlantations;
+    });
+  };
+
+  // Fonction pour afficher/masquer toutes les zones interdites
+  const toggleAllZones = () => {
+    const newVisibility = !showZoneInterdit;
+    setShowZoneInterdit(newVisibility);
+    if (newVisibility) {
+      // Rendre toutes les zones visibles
+      const allVisible = {};
+      Zoneinterditpolygons.forEach(zone => {
+        allVisible[zone._id || zone.id] = true;
+      });
+      setVisibleZones(allVisible);
+    } else {
+      // Masquer toutes les zones
+      setVisibleZones({});
+    }
+  };
+
+  // Fonction pour afficher/masquer toutes les régions
+  const toggleAllRegions = () => {
+    const newVisibility = !showRegion;
+    setShowRegion(newVisibility);
+    if (newVisibility) {
+      // Rendre toutes les régions visibles
+      const allVisible = {};
+      Regionpolygons.forEach(region => {
+        allVisible[region._id || region.id] = true;
+      });
+      setVisibleRegions(allVisible);
+    } else {
+      // Masquer toutes les régions
+      setVisibleRegions({});
+    }
+  };
+
+  // Fonction pour afficher/masquer toutes les plantations
+  const toggleAllPlantations = () => {
+    const newVisibility = !showPlantation;
+    setShowPlantation(newVisibility);
+    if (newVisibility) {
+      // Rendre toutes les plantations filtrées visibles
+      const allVisible = { ...visiblePlantations }; // Conserver les autres plantations visibles
+      getFilteredPlantations().forEach(plantation => {
+        allVisible[plantation.id || plantation._id] = true;
+      });
+      setVisiblePlantations(allVisible);
+    } else {
+      // Masquer toutes les plantations filtrées mais conserver les autres
+      const updated = { ...visiblePlantations };
+      getFilteredPlantations().forEach(plantation => {
+        delete updated[plantation.id || plantation._id];
+      });
+      setVisiblePlantations(updated);
+    }
+  };
+
+  // Fonction utilitaire pour extraire la géométrie des coordonnées
+  const extractGeometry = (coords) => {
+    if (!coords) return null;
+    
+    // Si c'est déjà une géométrie directe
+    if (coords.type && coords.coordinates) {
+      return coords;
+    }
+    
+    // Si c'est une Feature
+    if (coords.type === 'Feature' && coords.geometry) {
+      return coords.geometry;
+    }
+    
+    // Si c'est une FeatureCollection, prendre la première feature
+    if (coords.type === 'FeatureCollection' && coords.features && coords.features.length > 0) {
+      return coords.features[0].geometry;
+    }
+    
+    return null;
+  };
+
+  // Fonctions d'export
+  const exportToGeoJSON = (plantations) => {
+    console.log('🗂️ exportToGeoJSON - plantations reçues:', plantations.length);
+    
+    const features = plantations
+      .filter(plantation => {
+        // Vérifier que la plantation a des coordonnées valides
+        const coords = plantation.coordonnee || plantation.Coordonnee;
+        const hasCoords = coords && (coords.type === 'Polygon' || coords.type === 'Point' || coords.type === 'MultiPolygon');
+        if (!hasCoords) {
+          console.warn('⚠️ Plantation sans coordonnées valides:', plantation.Code || plantation.code);
+        }
+        return hasCoords;
+      })
+      .map(plantation => {
+        const coords = plantation.coordonnee || plantation.Coordonnee;
+        console.log('📍 Export plantation:', plantation.Code || plantation.code, 'coords type:', coords?.type);
+        
+        return {
+          type: "Feature",
+          properties: {
+            Code: plantation.Code || plantation.code,
+            Superficie: plantation.Superficie || plantation.Superficie,
+            Superficie_decla: plantation.Superficie_decla || plantation.superficieDecla,
+            Capacite: plantation.Capacite || plantation.capacite,
+            Rendement: plantation.Rendement || plantation.rendement,
+            ProducteurCode: plantation.producteurData?.Code,
+            ProducteurNom: plantation.producteurData?.Nom,
+            ProducteurPrenom: plantation.producteurData?.Prenom,
+            Produit: plantation.produitData?.lib_prod || plantation.produitData?.Lib_prod,
+            Norme: plantation.normeData?.lib_norme || plantation.normeData?.Lib_norme
+          },
+          geometry: coords
+        };
+      });
+
+    console.log('✅ Features valides pour export:', features.length);
+    
+    const featureCollection = {
+      type: "FeatureCollection",
+      features: features
+    };
+    
+    return JSON.stringify(featureCollection, null, 2);
+  };
+
+  const exportToKML = (plantations) => {
+    console.log('🗂️ exportToKML - plantations reçues:', plantations.length);
+    
+    let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Plantations Export</name>
+    <description>Export des plantations depuis eFarmer</description>
+    <Style id="plantation-style">
+      <LineStyle>
+        <color>ff0000ff</color>
+        <width>2</width>
+      </LineStyle>
+      <PolyStyle>
+        <color>4d0000ff</color>
+      </PolyStyle>
+    </Style>
+`;
+
+    let kmlFeaturesCount = 0;
+    plantations.forEach((plantation, index) => {
+      const rawCoords = plantation.coordonnee || plantation.Coordonnee;
+      const coords = extractGeometry(rawCoords);
+      
+      console.log(`🔍 Plantation ${index + 1}:`, {
+        code: plantation.Code || plantation.code,
+        hasCoordonnee: !!plantation.coordonnee,
+        hasCoordonneeCapital: !!plantation.Coordonnee,
+        rawCoordsType: rawCoords?.type,
+        extractedCoordsType: coords?.type,
+        coords: coords
+      });
+      
+      if (coords && (coords.type === 'Polygon' || coords.type === 'MultiPolygon')) {
+        kmlFeaturesCount++;
+        console.log(`✅ Plantation ${plantation.Code || plantation.code} ajoutée au KML`);
+        
+        let coordinates = '';
+        if (coords.type === 'Polygon') {
+          coordinates = coords.coordinates[0].map(coord => `${coord[0]},${coord[1]},0`).join(' ');
+        } else if (coords.type === 'MultiPolygon') {
+          // Pour MultiPolygon, prendre le premier polygone
+          coordinates = coords.coordinates[0][0].map(coord => `${coord[0]},${coord[1]},0`).join(' ');
+        }
+        kml += `
+    <Placemark>
+      <name>${plantation.Code || plantation.code || 'Plantation'}</name>
+      <description><![CDATA[
+        <b>Code:</b> ${plantation.Code || plantation.code || 'N/A'}<br/>
+        <b>Superficie:</b> ${plantation.Superficie || plantation.Superficie } ha<br/>
+        <b>Producteur:</b> ${plantation.producteurData?.Nom || ''} ${plantation.producteurData?.Prenom || ''}<br/>
+        <b>Produit:</b> ${plantation.produitData?.lib_prod || plantation.produitData?.Lib_prod || 'N/A'}
+      ]]></description>
+      <styleUrl>#plantation-style</styleUrl>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>${coordinates}</coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>`;
+      } else {
+        console.warn(`❌ Plantation ${plantation.Code || plantation.code} ignorée - coords:`, coords);
+      }
+    });
+
+    console.log(`📊 Total des plantations ajoutées au KML: ${kmlFeaturesCount}`);
+    
+    kml += `
+  </Document>
+</kml>`;
+    return kml;
+  };
+
+  const exportToGPX = (plantations) => {
+    let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="eFarmer" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Plantations Export</name>
+    <desc>Export des plantations depuis eFarmer</desc>
+  </metadata>
+`;
+
+    plantations.forEach(plantation => {
+      const rawCoords = plantation.coordonnee || plantation.Coordonnee;
+      const coords = extractGeometry(rawCoords);
+      if (coords && (coords.type === 'Polygon' || coords.type === 'MultiPolygon')) {
+        // Prendre les coordonnées appropriées selon le type
+        const coordsArray = coords.type === 'Polygon' ? coords.coordinates[0] : coords.coordinates[0][0];
+        
+        gpx += `
+  <trk>
+    <name>${plantation.Code || plantation.code || 'Plantation'}</name>
+    <desc>Superficie: ${plantation.Superficie || plantation.Superficie } ha</desc>
+    <trkseg>`;
+        
+        coordsArray.forEach(coord => {
+          gpx += `
+      <trkpt lat="${coord[1]}" lon="${coord[0]}">
+        <name>${plantation.Code || plantation.code}</name>
+      </trkpt>`;
+        });
+        
+        gpx += `
+    </trkseg>
+  </trk>`;
+      }
+    });
+
+    gpx += `
+</gpx>`;
+    return gpx;
+  };
+
+  const exportToShapefile = async (plantations) => {
+    // Pour Shapefile, nous allons créer un simple CSV avec les coordonnées
+    // Dans une implémentation complète, vous pourriez utiliser une bibliothèque comme shpjs
+    let csv = "Code,Superficie,Latitude,Longitude,ProducteurNom,Produit\n";
+    
+    plantations.forEach(plantation => {
+      const rawCoords = plantation.coordonnee || plantation.Coordonnee;
+      const coords = extractGeometry(rawCoords);
+      if (coords && (coords.type === 'Polygon' || coords.type === 'MultiPolygon')) {
+        // Prendre les coordonnées appropriées selon le type
+        const coordsArray = coords.type === 'Polygon' ? coords.coordinates[0] : coords.coordinates[0][0];
+        
+        const centroid = coordsArray.reduce((acc, coord) => {
+          acc.lat += coord[1];
+          acc.lng += coord[0];
+          return acc;
+        }, { lat: 0, lng: 0 });
+        
+        centroid.lat /= coordsArray.length;
+        centroid.lng /= coordsArray.length;
+        
+        csv += `"${plantation.Code || plantation.code || ''}","${plantation.Superficie || plantation.Superficie || ''}","${centroid.lat}","${centroid.lng}","${plantation.producteurData?.Nom || ''} ${plantation.producteurData?.Prenom || ''}","${plantation.produitData?.lib_prod || plantation.produitData?.Lib_prod || ''}"\n`;
+      }
+    });
+    
+    return csv;
+  };
+
+  const downloadFile = (content, filename, contentType) => {
+    const blob = new Blob([content], { type: contentType });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExport = async () => {
+    console.log('🔍 Debug Export:');
+    console.log('- selectedPlantationsForExport:', selectedPlantationsForExport);
+    console.log('- Plantationpolygons.length:', Plantationpolygons.length);
+    console.log('- visiblePlantations:', visiblePlantations);
+    
+    const plantationsToExport = selectedPlantationsForExport.length > 0 
+      ? Plantationpolygons.filter(p => selectedPlantationsForExport.includes(p.id || p._id))
+      : Plantationpolygons.filter(p => visiblePlantations[p.id || p._id]);
+
+    console.log('- plantationsToExport.length:', plantationsToExport.length);
+    console.log('- plantationsToExport:', plantationsToExport);
+
+    if (plantationsToExport.length === 0) {
+      alert('Aucune plantation sélectionnée pour l\'export');
+      return;
+    }
+
+    let content, filename, contentType;
+
+    switch (exportFormat) {
+      case 'geojson':
+        content = exportToGeoJSON(plantationsToExport);
+        filename = `plantations_${new Date().toISOString().split('T')[0]}.geojson`;
+        contentType = 'application/json';
+        break;
+      case 'kml':
+        content = exportToKML(plantationsToExport);
+        filename = `plantations_${new Date().toISOString().split('T')[0]}.kml`;
+        contentType = 'application/vnd.google-earth.kml+xml';
+        break;
+      case 'gpx':
+        content = exportToGPX(plantationsToExport);
+        filename = `plantations_${new Date().toISOString().split('T')[0]}.gpx`;
+        contentType = 'application/gpx+xml';
+        break;
+      case 'shapefile':
+        content = await exportToShapefile(plantationsToExport);
+        filename = `plantations_${new Date().toISOString().split('T')[0]}.csv`;
+        contentType = 'text/csv';
+        break;
+      default:
+        return;
+    }
+
+    downloadFile(content, filename, contentType);
+    setExportDialogOpen(false);
+    setSelectedPlantationsForExport([]);
+  };
+
+  const handleExportSelected = (plantationIds) => {
+    setSelectedPlantationsForExport(plantationIds);
+    setExportDialogOpen(true);
+  };
+
+  const handleExportAll = () => {
+    setSelectedPlantationsForExport([]);
+    setExportDialogOpen(true);
+  };
+
+  // Fonctions pour les filtres
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      cooperative: '',
+      section: '',
+      localite: '',
+      codeProducteur: '',
+      nomProducteur: ''
+    });
+  };
+
+  // Fonction pour filtrer les plantations
+  const getFilteredPlantations = () => {
+    if (!filters.cooperative && !filters.section && !filters.localite && 
+        !filters.codeProducteur && !filters.nomProducteur) {
+      return Plantationpolygons;
+    }
+
+    return Plantationpolygons.filter(plantation => {
+      const producteur = plantation.producteurData;
+      
+      // Filtre par coopérative (si disponible dans les données)
+      if (filters.cooperative && plantation.cooperativeData) {
+        const cooperativeMatch = plantation.cooperativeData.Lib_coop?.toLowerCase()
+          .includes(filters.cooperative.toLowerCase());
+        if (!cooperativeMatch) return false;
+      }
+
+      // Filtre par section (si disponible dans les données)
+      if (filters.section && plantation.sectionData) {
+        const sectionMatch = plantation.sectionData.Lib_section?.toLowerCase()
+          .includes(filters.section.toLowerCase());
+        if (!sectionMatch) return false;
+      }
+
+      // Filtre par localité (si disponible dans les données producteur)
+      if (filters.localite && producteur) {
+        const localiteMatch = (producteur.Village || producteur.Localite || '')
+          .toLowerCase().includes(filters.localite.toLowerCase());
+        if (!localiteMatch) return false;
+      }
+
+      // Filtre par code producteur
+      if (filters.codeProducteur && producteur) {
+        const codeMatch = (producteur.Code || '').toLowerCase()
+          .includes(filters.codeProducteur.toLowerCase());
+        if (!codeMatch) return false;
+      }
+
+      // Filtre par nom producteur
+      if (filters.nomProducteur && producteur) {
+        const nomComplet = `${producteur.Nom || ''} ${producteur.Prenom || ''}`.toLowerCase();
+        const nomMatch = nomComplet.includes(filters.nomProducteur.toLowerCase());
+        if (!nomMatch) return false;
+      }
+
+      return true;
+    });
+  };
+
+  // Obtenir les options uniques pour les filtres
+  const getFilterOptions = () => {
+    const cooperatives = [...new Set(Plantationpolygons
+      .filter(p => p.cooperativeData?.Lib_coop)
+      .map(p => p.cooperativeData.Lib_coop))];
+    
+    const sections = [...new Set(Plantationpolygons
+      .filter(p => p.sectionData?.Lib_section)
+      .map(p => p.sectionData.Lib_section))];
+    
+    const localites = [...new Set(Plantationpolygons
+      .filter(p => p.producteurData?.Village || p.producteurData?.Localite)
+      .map(p => p.producteurData.Village || p.producteurData.Localite))];
+
+    return { cooperatives, sections, localites };
+  };
+
+  // Fonction pour créer le contenu du popup d'une plantation
+  const createPlantationPopup = (plantation) => {
+    return `
+      <div style="min-width: 300px; font-family: Arial, sans-serif;">
+        <h3 style="margin: 0 0 15px 0; color: #d32f2f; border-bottom: 2px solid #d32f2f; padding-bottom: 5px;">
+          🌱 Détails de la Plantation
+        </h3>
+        
+        <div style="display: grid; gap: 10px;">
+          <div style="background: #f5f5f5; padding: 8px; border-radius: 4px;">
+            <strong>📋 Code:</strong> ${plantation.Code || plantation.code || 'Non spécifié'}
+          </div>
+          
+          <div style="background: #f5f5f5; padding: 8px; border-radius: 4px;">
+            <strong>👤 Producteur:</strong><br/>
+            <span style="margin-left: 10px;">
+              Code: ${plantation.producteurData?.Code || 'Non spécifié'}<br/>
+              Nom: ${plantation.producteurData?.Nom || ''} ${plantation.producteurData?.Prenom || ''}
+            </span>
+          </div>
+          
+          <div style="background: #f5f5f5; padding: 8px; border-radius: 4px;">
+            <strong>🌾 Produit:</strong> ${plantation.produitData?.lib_prod || plantation.produitData?.Lib_prod || 'Non spécifié'}
+          </div>
+          
+          <div style="background: #f5f5f5; padding: 8px; border-radius: 4px;">
+            <strong>📏 Superficie:</strong> ${plantation.Superficie || plantation.Superficie } ha
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  // Fonction pour gérer les événements sur les plantations
+  const onEachPlantationFeature = (plantation) => (feature, layer) => {
+    layer.on({
+      click: () => {
+        layer.bindPopup(createPlantationPopup(plantation), {
+          maxWidth: 400,
+          className: 'plantation-popup'
+        }).openPopup();
+      }
+    });
+  };
+
+  // Fonction pour créer le contenu du popup d'une zone interdite
+  const createZoneInterditPopup = (zone) => {
+    return `
+      <div style="min-width: 250px; font-family: Arial, sans-serif;">
+        <h3 style="margin: 0 0 15px 0; color: #2e7d32; border-bottom: 2px solid #2e7d32; padding-bottom: 5px;">
+          🚫 Zone Interdite
+        </h3>
+        
+        <div style="display: grid; gap: 10px;">
+          <div style="background: #e8f5e8; padding: 12px; border-radius: 4px; border-left: 4px solid #2e7d32;">
+            <strong>📍 Nom de la zone:</strong><br/>
+            <span style="font-size: 1.1em; color: #2e7d32; font-weight: 500;">
+              ${zone.Lib_zi || 'Zone non nommée'}
+            </span>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  // Fonction pour gérer les événements sur les zones interdites
+  const onEachZoneInterditFeature = (zone) => (feature, layer) => {
+    layer.on({
+      click: () => {
+        layer.bindPopup(createZoneInterditPopup(zone), {
+          maxWidth: 350,
+          className: 'zone-interdit-popup'
+        }).openPopup();
+      }
+    });
+  };
+
+  // Fonction pour créer le contenu du popup d'une région
+  const createRegionPopup = (region) => {
+    return `
+      <div style="min-width: 250px; font-family: Arial, sans-serif;">
+        <h3 style="margin: 0 0 15px 0; color: #FF8C00; border-bottom: 2px solid #FF8C00; padding-bottom: 5px;">
+          🗺️ Région
+        </h3>
+        
+        <div style="display: grid; gap: 10px;">
+          <div style="background: #fff8f0; padding: 12px; border-radius: 4px; border-left: 4px solid #FF8C00;">
+            <strong>📍 Nom de la région:</strong><br/>
+            <span style="font-size: 1.1em; color: #FF8C00; font-weight: 500;">
+              ${region.Lib_region || region.lib_reg || region.nom || region.Nom || 'Région non nommée'}
+            </span>
+          </div>
+          ${region.Code_reg || region.code_reg ? `
+          <div style="background: #fff8f0; padding: 8px; border-radius: 4px;">
+            <strong>🏷️ Code région:</strong> ${region.Code_reg || region.code_reg}
+          </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  };
+
+  // Fonction pour gérer les événements sur les régions
+  const onEachRegionFeature = (region) => (feature, layer) => {
+    layer.on({
+      click: () => {
+        layer.bindPopup(createRegionPopup(region), {
+          maxWidth: 350,
+          className: 'region-popup'
+        }).openPopup();
+      }
+    });
+  };
+
+  // Fonction pour valider un GeoJSON
+  const isValidGeoJSON = (data) => {
+    try {
+      if (!data || typeof data !== 'object') return false;
+      if (!data.type) return false;
+      
+      if (data.type === 'FeatureCollection') {
+        if (!Array.isArray(data.features)) return false;
+        return data.features.every(feature => 
+          feature.type === 'Feature' && 
+          feature.geometry && 
+          feature.geometry.type && 
+          Array.isArray(feature.geometry.coordinates) &&
+          feature.geometry.coordinates.length > 0
+        );
+      }
+      
+      if (data.type === 'Feature') {
+        return data.geometry && 
+               data.geometry.type && 
+               Array.isArray(data.geometry.coordinates) &&
+               data.geometry.coordinates.length > 0 &&
+               ['Point', 'LineString', 'Polygon', 'MultiPoint', 'MultiLineString', 'MultiPolygon'].includes(data.geometry.type);
+      }
+      
+      if (['Point', 'LineString', 'Polygon', 'MultiPoint', 'MultiLineString', 'MultiPolygon', 'GeometryCollection'].includes(data.type)) {
+        if (data.type === 'GeometryCollection') {
+          return Array.isArray(data.geometries) && data.geometries.length > 0;
+        }
+        return Array.isArray(data.coordinates) && data.coordinates.length > 0;
+      }
+      
+      return false;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  // Fonction pour nettoyer et valider les coordonnées
+  const sanitizeGeoJSON = (data) => {
+    try {
+      if (!data) return null;
+      
+      // Si c'est une chaîne, essayer de la parser
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch (parseError) {
+          return null;
+        }
+      }
+      
+      if (!data || typeof data !== 'object') return null;
+      
+      // Vérifier et nettoyer les coordonnées pour FeatureCollection
+      if (data.type === 'FeatureCollection') {
+        if (!Array.isArray(data.features)) return null;
+        
+        const validFeatures = data.features.filter(feature => {
+          return feature.geometry && 
+                 feature.geometry.coordinates && 
+                 Array.isArray(feature.geometry.coordinates) &&
+                 feature.geometry.coordinates.length > 0;
+        });
+        
+        if (validFeatures.length === 0) return null;
+        data.features = validFeatures;
+      }
+      
+      // Vérifier pour Feature unique
+      if (data.type === 'Feature') {
+        if (!data.geometry || !data.geometry.coordinates || !Array.isArray(data.geometry.coordinates)) {
+          return null;
+        }
+      }
+      
+      // Vérifier pour géométrie directe
+      if (['Point', 'LineString', 'Polygon', 'MultiPoint', 'MultiLineString', 'MultiPolygon'].includes(data.type)) {
+        if (!data.coordinates || !Array.isArray(data.coordinates)) {
+          return null;
+        }
+      }
+      
+      return isValidGeoJSON(data) ? data : null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const paysId = localStorage.getItem("PaysId");
+        const societeId = localStorage.getItem("SocieteId");
+        const campagneId = localStorage.getItem("CampagneId");
+        const utilisateurId = localStorage.getItem("UtilisateurId");
+        
+        console.log("IDs récupérés du localStorage :", { paysId, societeId, campagneId, utilisateurId });
+
+        // Chargement des données pays
+        const resPays = await paysService.All();
+        
+        if (resPays.data) {
+          // Chercher les coordonnées dans différents champs possibles
+          let coords = null;
+          let paysData = null;
+          
+          // Si les données sont dans un tableau items, prendre le premier pays
+          if (resPays.data.items && Array.isArray(resPays.data.items) && resPays.data.items.length > 0) {
+            paysData = resPays.data.items[0];
+            coords = paysData.Coordonnee || paysData.coordonnee || paysData.coordinates || paysData.geometry;
+          } else {
+            // Sinon chercher directement dans resPays.data
+            paysData = resPays.data;
+            coords = resPays.data.Coordonnee || resPays.data.coordonnee || resPays.data.coordinates || resPays.data.geometry;
+          }
+          
+          if (coords) {
+            const cleanedPaysData = sanitizeGeoJSON(coords);
+            
+            if (cleanedPaysData) {
+              setPaysPolygons({ ...paysData, Coordonnee: cleanedPaysData });
+            }
+          }
+        }
+
+        // Chargement des zones interdites
+        const resZones = await zoneinterditService.ByPays(paysId);
+        
+        if (resZones.data && Array.isArray(resZones.data)) {
+          const validZones = resZones.data
+            .map((zone) => {
+              // Chercher les coordonnées dans différents champs
+              const coords = zone.Coordonnee || zone.coordonnee || zone.coordinates || zone.geometry;
+              
+              if (coords) {
+                const cleanedCoords = sanitizeGeoJSON(coords);
+                
+                if (cleanedCoords) {
+                  return { ...zone, Coordonnee: cleanedCoords };
+                }
+              }
+              return null;
+            })
+            .filter(zone => zone !== null);
+          
+          setZoneinterditpolygons(validZones);
+          // Initialiser toutes les zones comme visibles
+          const initialZoneVisibility = {};
+          validZones.forEach(zone => {
+            initialZoneVisibility[zone._id || zone.id] = true;
+          });
+          setVisibleZones(initialZoneVisibility);
+        }
+
+        // Chargement des régions
+        const resRegions = await regionService.All();
+        
+        if (resRegions.data && Array.isArray(resRegions.data)) {
+          const validRegions = resRegions.data
+            .map((region) => {
+              // Chercher les coordonnées dans différents champs
+              const coords = region.Coordonnee || region.coordonnee || region.coordinates || region.geometry;
+              
+              if (coords) {
+                const cleanedCoords = sanitizeGeoJSON(coords);
+                
+                if (cleanedCoords) {
+                  return { ...region, Coordonnee: cleanedCoords };
+                }
+              }
+              return null;
+            })
+            .filter(region => region !== null);
+          
+          setRegionpolygons(validRegions);
+          // Initialiser toutes les régions comme visibles
+          const initialRegionVisibility = {};
+          validRegions.forEach(region => {
+            initialRegionVisibility[region._id || region.id] = true;
+          });
+          setVisibleRegions(initialRegionVisibility);
+        }
+
+        // Chargement des plantations - Récupérer toutes les coopératives de l'utilisateur
+        let allPlantations = [];
+        let allProducteurs = [];
+        let allProduits = [];
+        let allNormes = [];
+        
+        if (utilisateurId) {
+          try {
+            // Récupérer toutes les coopératives de l'utilisateur connecté
+            const cooperativesRes = await cooperativeService.ByUser(utilisateurId);
+            console.log("Coopératives de l'utilisateur :", cooperativesRes);
+            
+            const cooperatives = cooperativesRes.data || cooperativesRes || [];
+            console.log(`Nombre de coopératives trouvées: ${cooperatives.length}`);
+            
+            if (cooperatives.length > 0) {
+              // Charger les données de référence en parallèle
+              const [produitsRes, normesRes] = await Promise.allSettled([
+                produitService.All(),
+                normeService.All()
+              ]);
+              
+              // Extraire les données de produits
+              if (produitsRes.status === 'fulfilled') {
+                allProduits = produitsRes.value?.data?.items || produitsRes.value?.data || produitsRes.value || [];
+                console.log(`Produits chargés: ${allProduits.length}`, allProduits);
+                setProduits(allProduits);
+              }
+              
+              // Extraire les données de normes - Vérifier différents formats
+              if (normesRes.status === 'fulfilled') {
+                const normesData = normesRes.value?.data?.items || normesRes.value?.data || normesRes.value;
+                allNormes = Array.isArray(normesData) ? normesData : [];
+                console.log(`Normes chargées: ${allNormes.length}`, allNormes);
+                setNormes(allNormes);
+              } else {
+                console.warn("Erreur lors du chargement des normes:", normesRes.reason);
+                allNormes = [];
+                setNormes([]);
+              }
+              
+              // Pour chaque coopérative, récupérer ses parcelles et producteurs
+              const parcellesPromises = cooperatives.map(coop => {
+                console.log(`Récupération des parcelles pour la coopérative: ${coop.Lib_coop || coop.id}`);
+                return parcelleService.ByCooperative(coop.id).catch((error) => {
+                  console.warn(`Erreur pour la coopérative ${coop.id}:`, error);
+                  return { data: [] };
+                });
+              });
+              
+              const producteursPromises = cooperatives.map(coop => {
+                console.log(`Récupération des producteurs pour la coopérative: ${coop.Lib_coop || coop.id}`);
+                return producteurService.ByCooperative(coop.id).catch((error) => {
+                  console.warn(`Erreur producteurs pour la coopérative ${coop.id}:`, error);
+                  return { data: [] };
+                });
+              });
+              
+              const [parcellesResults, producteursResults] = await Promise.all([
+                Promise.all(parcellesPromises),
+                Promise.all(producteursPromises)
+              ]);
+              
+              // Combiner toutes les parcelles de toutes les coopératives
+              allPlantations = parcellesResults.flatMap(res => {
+                const data = res.data || res || [];
+                console.log(`Parcelles récupérées:`, data.length);
+                return Array.isArray(data) ? data : [];
+              });
+              
+              // Combiner tous les producteurs de toutes les coopératives
+              allProducteurs = producteursResults.flatMap(res => {
+                const data = res.data || res || [];
+                console.log(`Producteurs récupérés:`, data.length);
+                return Array.isArray(data) ? data : [];
+              });
+              
+              console.log(`Total des plantations récupérées: ${allPlantations.length}`);
+              console.log(`Total des producteurs récupérés: ${allProducteurs.length}`);
+              setProducteurs(allProducteurs);
+            }
+          } catch (error) {
+            console.error("Erreur lors de la récupération des coopératives:", error);
+          }
+        }
+        
+        // Fallback: essayer avec la méthode par campagne et société si aucune plantation trouvée
+        if (allPlantations.length === 0 && campagneId && societeId) {
+          try {
+            console.log("Fallback: tentative avec ByCampagneAndSociete");
+            const resPlantation = await parcelleService.ByCampagneAndSociete(campagneId, societeId);
+            console.log("Données des plantations (ByCampagneAndSociete) :", resPlantation);
+            if (resPlantation.data && Array.isArray(resPlantation.data)) {
+              allPlantations = resPlantation.data;
+            }
+          } catch (error) {
+            console.warn("Erreur avec ByCampagneAndSociete :", error);
+          }
+        }
+        
+        console.log("Plantations finales à traiter :", allPlantations.length);
+        
+        if (allPlantations.length > 0) {
+          const validPlantations = allPlantations
+            .map((plantation) => {
+              // Vérifier différents noms de champs pour les coordonnées
+              const coords = plantation.Coordonnee;
+              console.log(`Plantation ${plantation.Code || plantation.code || plantation.id} - coordonnées:`, coords ? "présentes" : "absentes");
+              
+              if (coords) {
+                const cleanedCoords = sanitizeGeoJSON(coords);
+                
+                if (cleanedCoords) {
+                  console.log(`Plantation ${plantation.Code || plantation.code || plantation.id} - coordonnées validées`);
+                  
+                  // Enrichir la plantation avec les données relationnelles
+                  const producteurData = Array.isArray(allProducteurs) ? allProducteurs.find(p => p._id === plantation.ProducteurId) : null;
+                  const produitData = Array.isArray(allProduits) ? allProduits.find(p => p.id === plantation.ProduitId) : null;
+                  const normeData = Array.isArray(allNormes) ? allNormes.find(n => n._id === plantation.NormeId) : null;
+                  
+                  console.log(`Enrichissement pour plantation ${plantation.Code}:`, {
+                    producteurTrouve: !!producteurData,
+                    produitTrouve: !!produitData,
+                    normeTrouvee: !!normeData,
+                    producteurId: plantation.ProducteurId,
+                    produitId: plantation.ProduitId,
+                    normeId: plantation.NormeId
+                  });
+                  
+                  return { 
+                    ...plantation, 
+                    coordonnee: cleanedCoords,
+                    producteurData: producteurData || null,
+                    produitData: produitData || null,
+                    normeData: normeData || null
+                  };
+                }
+              }
+              return null;
+            })
+            .filter(plantation => plantation !== null);
+          
+          console.log("Plantations valides trouvées :", validPlantations.length);
+          setPlantationpolygons(validPlantations);
+          // Initialiser toutes les plantations comme visibles
+          const initialPlantationVisibility = {};
+          validPlantations.forEach(plantation => {
+            initialPlantationVisibility[plantation.id || plantation._id] = true;
+          });
+          setVisiblePlantations(initialPlantationVisibility);
+        } else {
+          console.log("Aucune plantation trouvée");
+          setPlantationpolygons([]);
+        }
+        
+      } catch (err) {
+        console.error("Erreur de chargement des données :", err);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Effet pour gérer l'affichage automatique des plantations filtrées
+  useEffect(() => {
+    if (Object.values(filters).some(f => f) && showPlantation) {
+      // Si des filtres sont actifs et les plantations sont affichées,
+      // rendre visibles toutes les plantations qui correspondent aux filtres
+      const filtered = getFilteredPlantations();
+      const newVisiblePlantations = { ...visiblePlantations };
+      
+      // Rendre visibles toutes les plantations filtrées
+      filtered.forEach(plantation => {
+        newVisiblePlantations[plantation.id || plantation._id] = true;
+      });
+      
+      setVisiblePlantations(newVisiblePlantations);
+    }
+  }, [filters]);
+
+  // Plantations filtrées
+  const filteredPlantations = useMemo(() => {
+    return getFilteredPlantations();
+  }, [Plantationpolygons, filters]);
+
+  // Regroupe les polygones visibles pour le zoom
+  const visiblePolygons = useMemo(() => {
+    let arr = [];
+    if (showPays && Payspolygons) arr.push(Payspolygons);
+    if (showZoneInterdit) {
+      const visibleZonePolygons = Zoneinterditpolygons.filter(zone => {
+        const zoneId = zone._id || zone.id;
+        return visibleZones[zoneId];
+      });
+      arr = arr.concat(visibleZonePolygons);
+    }
+    if (showRegion) {
+      const visibleRegionPolygons = Regionpolygons.filter(region => {
+        const regionId = region._id || region.id;
+        return visibleRegions[regionId];
+      });
+      arr = arr.concat(visibleRegionPolygons);
+    }
+    if (showPlantation) {
+      console.log('🔍 Calcul des plantations visibles pour le zoom', filteredPlantations);
+      const visiblePlantationPolygons = filteredPlantations.filter(plantation => {
+        const plantationId = plantation.id || plantation._id;
+        return visiblePlantations[plantationId];
+      });
+      arr = arr.concat(visiblePlantationPolygons);
+    }
+    return arr;
+  }, [showPays, showZoneInterdit, showRegion, showPlantation, Payspolygons, Zoneinterditpolygons, Regionpolygons, filteredPlantations, visibleZones, visibleRegions, visiblePlantations]);
+
+  return (
+    <Box sx={{ display: 'flex', width: "100%", height: '100vh' }}>
+      {/* Panneau de contrôle latéral style Google Earth */}
+      <Paper 
+        elevation={3} 
+        sx={{ 
+          width: 350, 
+          height: '100vh', 
+          overflow: 'auto',
+          backgroundColor: '#f5f5f5',
+          borderRight: '2px solid #ddd'
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', color: '#333' }}>
+            🌍 Couches cartographiques
+          </Typography>
+          
+          {/* Section Filtres */}
+          <Card sx={{ mb: 2, boxShadow: 1 }}>
+            <CardContent sx={{ p: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <FilterListIcon sx={{ mr: 1, color: '#1976d2' }} />
+                  <Typography variant="h6" sx={{ color: '#1976d2' }}>
+                    Filtres Plantations
+                  </Typography>
+                </Box>
+                <Box>
+                  <IconButton
+                    size="small"
+                    onClick={clearFilters}
+                    title="Effacer les filtres"
+                    disabled={!Object.values(filters).some(f => f)}
+                  >
+                    <ClearIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => setShowFilters(!showFilters)}
+                    title={showFilters ? "Masquer les filtres" : "Afficher les filtres"}
+                  >
+                    <SearchIcon />
+                  </IconButton>
+                </Box>
+              </Box>
+              
+              <Collapse in={showFilters}>
+                <Box sx={{ mt: 2 }}>
+                  <Grid container spacing={1}>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Code Producteur"
+                        value={filters.codeProducteur}
+                        onChange={(e) => handleFilterChange('codeProducteur', e.target.value)}
+                        placeholder="Rechercher par code producteur..."
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Nom Producteur"
+                        value={filters.nomProducteur}
+                        onChange={(e) => handleFilterChange('nomProducteur', e.target.value)}
+                        placeholder="Rechercher par nom/prénom..."
+                      />
+                    </Grid>
+                   
+                    
+                   
+                  </Grid>
+                  
+                  {Object.values(filters).some(f => f) && (
+                    <Typography variant="body2" sx={{ mt: 1, color: 'primary.main', fontWeight: 'bold' }}>
+                      {filteredPlantations.length} plantation(s) trouvée(s)
+                    </Typography>
+                  )}
+                </Box>
+              </Collapse>
+            </CardContent>
+          </Card>
+          
+          {/* Section Pays */}
+          <Accordion defaultExpanded sx={{ mb: 1, boxShadow: 1 }}>
+            <AccordionSummary 
+              expandIcon={<ExpandMoreIcon />}
+              sx={{ backgroundColor: '#e3f2fd', minHeight: 48 }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                <PublicIcon sx={{ mr: 1, color: '#1976d2' }} />
+                <Typography variant="h6" sx={{ flexGrow: 1 }}>Pays</Typography>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowPays(!showPays);
+                  }}
+                  sx={{ mr: 1 }}
+                >
+                  {showPays ? <VisibilityIcon color="primary" /> : <VisibilityOffIcon />}
+                </IconButton>
+                <Chip 
+                  label="1" 
+                  size="small" 
+                  color={showPays ? "primary" : "default"}
+                />
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails sx={{ backgroundColor: '#fafafa' }}>
+              {Payspolygons && (
+                <List dense>
+                  <ListItem 
+                    sx={{ 
+                      backgroundColor: showPays ? '#e8f5e8' : '#f5f5f5',
+                      borderRadius: 1,
+                      mb: 1 
+                    }}
+                  >
+                    <ListItemIcon>
+                      <IconButton
+                        size="small"
+                        onClick={() => setShowPays(!showPays)}
+                      >
+                        {showPays ? <VisibilityIcon color="primary" /> : <VisibilityOffIcon />}
+                      </IconButton>
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={Payspolygons.Lib_pays || Payspolygons.nom || "Pays"}
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => showPays && zoomToPolygon(Payspolygons.Coordonnee)}
+                    />
+                    {showPays && (
+                      <IconButton
+                        size="small"
+                        onClick={() => zoomToPolygon(Payspolygons.Coordonnee)}
+                        title="Zoomer vers ce pays"
+                      >
+                        <ZoomInIcon />
+                      </IconButton>
+                    )}
+                  </ListItem>
+                </List>
+              )}
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Section Zones interdites */}
+          <Accordion defaultExpanded sx={{ mb: 1, boxShadow: 1 }}>
+            <AccordionSummary 
+              expandIcon={<ExpandMoreIcon />}
+              sx={{ backgroundColor: '#e8f5e8', minHeight: 48 }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                <DangerousIcon sx={{ mr: 1, color: '#2e7d32' }} />
+                <Typography variant="h6" sx={{ flexGrow: 1 }}>Zones interdites</Typography>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleAllZones();
+                  }}
+                  sx={{ mr: 1 }}
+                >
+                  {showZoneInterdit ? <VisibilityIcon color="success" /> : <VisibilityOffIcon />}
+                </IconButton>
+                <Chip 
+                  label={Zoneinterditpolygons.length} 
+                  size="small" 
+                  color={showZoneInterdit ? "success" : "default"}
+                />
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails sx={{ backgroundColor: '#fafafa', maxHeight: 300, overflow: 'auto' }}>
+              <List dense>
+                {Zoneinterditpolygons.map((zone, index) => {
+                  const zoneId = zone._id || zone.id || index;
+                  const isVisible = showZoneInterdit && visibleZones[zoneId];
+                  return (
+                    <ListItem 
+                      key={zoneId}
+                      sx={{ 
+                        backgroundColor: isVisible ? '#e8f5e8' : '#f5f5f5',
+                        borderRadius: 1,
+                        mb: 1 
+                      }}
+                    >
+                      <ListItemIcon>
+                        <IconButton
+                          size="small"
+                          onClick={() => toggleZoneVisibility(zoneId)}
+                        >
+                          {isVisible ? <VisibilityIcon color="success" /> : <VisibilityOffIcon />}
+                        </IconButton>
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={zone.Lib_zi || `Zone ${index + 1}`}
+                        sx={{ cursor: 'pointer' }}
+                        onClick={() => isVisible && zoomToPolygon(zone.Coordonnee)}
+                      />
+                      {isVisible && (
+                        <IconButton
+                          size="small"
+                          onClick={() => zoomToPolygon(zone.Coordonnee)}
+                          title="Zoomer vers cette zone"
+                        >
+                          <ZoomInIcon />
+                        </IconButton>
+                      )}
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Section Régions */}
+          <Accordion defaultExpanded sx={{ mb: 1, boxShadow: 1 }}>
+            <AccordionSummary 
+              expandIcon={<ExpandMoreIcon />}
+              sx={{ backgroundColor: '#fff8f0', minHeight: 48 }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                <PublicIcon sx={{ mr: 1, color: '#FF8C00' }} />
+                <Typography variant="h6" sx={{ flexGrow: 1 }}>Régions</Typography>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleAllRegions();
+                  }}
+                  sx={{ mr: 1 }}
+                >
+                  {showRegion ? <VisibilityIcon sx={{ color: '#FF8C00' }} /> : <VisibilityOffIcon />}
+                </IconButton>
+                <Chip 
+                  label={Regionpolygons.length} 
+                  size="small" 
+                  sx={{ 
+                    backgroundColor: showRegion ? '#FF8C00' : 'default',
+                    color: showRegion ? 'white' : 'inherit'
+                  }}
+                />
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails sx={{ backgroundColor: '#fafafa', maxHeight: 300, overflow: 'auto' }}>
+              <List dense>
+                {Regionpolygons.map((region, index) => {
+                  const regionId = region._id || region.id || index;
+                  const isVisible = showRegion && visibleRegions[regionId];
+                  return (
+                    <ListItem 
+                      key={regionId}
+                      sx={{ 
+                        backgroundColor: isVisible ? '#fff8f0' : '#f5f5f5',
+                        borderRadius: 1,
+                        mb: 1 
+                      }}
+                    >
+                      <ListItemIcon>
+                        <IconButton
+                          size="small"
+                          onClick={() => toggleRegionVisibility(regionId)}
+                        >
+                          {isVisible ? <VisibilityIcon sx={{ color: '#FF8C00' }} /> : <VisibilityOffIcon />}
+                        </IconButton>
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={region.Lib_region || region.lib_reg || region.nom || region.Nom || `Région ${index + 1}`}
+                        sx={{ cursor: 'pointer' }}
+                        onClick={() => isVisible && zoomToPolygon(region.Coordonnee)}
+                      />
+                      {isVisible && (
+                        <IconButton
+                          size="small"
+                          onClick={() => zoomToPolygon(region.Coordonnee)}
+                          title="Zoomer vers cette région"
+                        >
+                          <ZoomInIcon />
+                        </IconButton>
+                      )}
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Section Plantations */}
+          <Accordion defaultExpanded sx={{ mb: 1, boxShadow: 1 }}>
+            <AccordionSummary 
+              expandIcon={<ExpandMoreIcon />}
+              sx={{ backgroundColor: '#ffebee', minHeight: 48 }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                <AgricultureIcon sx={{ mr: 1, color: '#d32f2f' }} />
+                <Typography variant="h6" sx={{ flexGrow: 1 }}>Plantations</Typography>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleAllPlantations();
+                  }}
+                  sx={{ mr: 1 }}
+                >
+                  {showPlantation ? <VisibilityIcon color="error" /> : <VisibilityOffIcon />}
+                </IconButton>
+                <Chip 
+                  label={`${filteredPlantations.length}${filteredPlantations.length !== Plantationpolygons.length ? `/${Plantationpolygons.length}` : ''}`} 
+                  size="small" 
+                  color={showPlantation ? "error" : "default"}
+                />
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExportMenuAnchor(e.currentTarget);
+                  }}
+                  sx={{ mr: 1 }}
+                  title="Exporter les plantations"
+                >
+                  <DownloadIcon />
+                </IconButton>
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails sx={{ backgroundColor: '#fafafa', maxHeight: 400, overflow: 'auto' }}>
+              <List dense>
+                {filteredPlantations.map((plantation, index) => {
+                  const plantationId = plantation.id || plantation._id || index;
+                  const isVisible = showPlantation && visiblePlantations[plantationId];
+                  return (
+                    <ListItem 
+                      key={plantationId}
+                      sx={{ 
+                        backgroundColor: isVisible ? '#ffebee' : '#f5f5f5',
+                        borderRadius: 1,
+                        mb: 1 
+                      }}
+                    >
+                      <ListItemIcon>
+                        <IconButton
+                          size="small"
+                          onClick={() => togglePlantationVisibility(plantationId)}
+                        >
+                          {isVisible ? <VisibilityIcon color="error" /> : <VisibilityOffIcon />}
+                        </IconButton>
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={plantation.Code || plantation.code || `Plantation ${index + 1}`}
+                        secondary={`${plantation.producteurData?.Nom || ''} ${plantation.producteurData?.Prenom || ''}`}
+                        sx={{ cursor: 'pointer' }}
+                        onClick={() => isVisible && zoomToPolygon(plantation.coordonnee)}
+                      />
+                      {isVisible && (
+                        <>
+                          <IconButton
+                            size="small"
+                            onClick={() => zoomToPolygon(plantation.coordonnee)}
+                            title="Zoomer vers cette plantation"
+                          >
+                            <ZoomInIcon />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleExportSelected([plantationId])}
+                            title="Exporter cette plantation"
+                          >
+                            <FileDownloadIcon />
+                          </IconButton>
+                        </>
+                      )}
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </AccordionDetails>
+          </Accordion>
+        </Box>
+      </Paper>
+
+      {/* Carte principale */}
+      <Box sx={{ flexGrow: 1, height: '100vh' }}>
+        <MapContainer 
+          center={[0, 0]} 
+          zoom={5} 
+          style={{ height: "100%", width: "100%" }}
+          ref={mapRef}
+        >
+          <FeatureGroup>
+            <LayersControl position="topright">
+              {/* Couches de base */}
+              <LayersControl.BaseLayer checked name="OpenStreetMap">
+                <TileLayer 
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                />
+              </LayersControl.BaseLayer>
+              
+              <LayersControl.BaseLayer name="Google Satellite">
+                <TileLayer 
+                  url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+                  attribution='&copy; <a href="https://www.google.com/maps">Google Maps</a>'
+                />
+              </LayersControl.BaseLayer>
+              
+              <LayersControl.BaseLayer name="Google Hybrid">
+                <TileLayer 
+                  url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+                  attribution='&copy; <a href="https://www.google.com/maps">Google Maps</a>'
+                />
+              </LayersControl.BaseLayer>
+                <LayersControl.BaseLayer name="Bing Satellite">
+                <TileLayer
+                  url="https://ecn.t3.tiles.virtualearth.net/tiles/a{q}.jpeg?g=1"
+                  attribution="&copy; Microsoft Bing Maps"
+                />
+              </LayersControl.BaseLayer>
+              
+              <LayersControl.BaseLayer name="Esri Satellite">
+                <TileLayer
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  attribution="&copy; Esri"
+                />
+              </LayersControl.BaseLayer>
+
+              {/* Couches d'overlay - Ordre de superposition : Pays (dessous) -> Régions -> Zones interdites -> Plantations (dessus) */}
+              
+              {/* Couche Pays */}
+              {showPays && Payspolygons && (
+                <LayersControl.Overlay checked name="Pays">
+                  <GeoJSON
+                    key="pays"
+                    data={Payspolygons.Coordonnee}
+                    style={paysStyle}
+                  />
+                </LayersControl.Overlay>
+              )}
+
+              {/* Couche Régions */}
+              {showRegion && (
+                <LayersControl.Overlay checked name="Régions">
+                  <FeatureGroup>
+                    {Regionpolygons.map((region, index) => {
+                      const regionId = region._id || region.id || index;
+                      const isVisible = visibleRegions[regionId];
+                      
+                      if (!isVisible || !region.Coordonnee) return null;
+                      
+                      return (
+                        <GeoJSON
+                          key={`region-${regionId}`}
+                          data={region.Coordonnee}
+                          style={regionStyle}
+                          onEachFeature={onEachRegionFeature(region)}
+                        />
+                      );
+                    })}
+                  </FeatureGroup>
+                </LayersControl.Overlay>
+              )}
+
+              {/* Couche Zones Interdites */}
+              {showZoneInterdit && (
+                <LayersControl.Overlay checked name="Zones Interdites">
+                  <FeatureGroup>
+                    {Zoneinterditpolygons.map((zone, index) => {
+                      const zoneId = zone._id || zone.id || index;
+                      const isVisible = visibleZones[zoneId];
+                      
+                      if (!isVisible || !zone.Coordonnee) return null;
+                      
+                      return (
+                        <GeoJSON
+                          key={`zone-${zoneId}`}
+                          data={zone.Coordonnee}
+                          style={zoneStyle}
+                          onEachFeature={onEachZoneInterditFeature(zone)}
+                        />
+                      );
+                    })}
+                  </FeatureGroup>
+                </LayersControl.Overlay>
+              )}
+
+              {/* Couche Plantations */}
+              {showPlantation && (
+                <LayersControl.Overlay checked name="Plantations">
+                  <FeatureGroup>
+                    {filteredPlantations.map((plantation, index) => {
+                      const plantationId = plantation.id || plantation._id || index;
+                      const isVisible = visiblePlantations[plantationId];
+                      
+                      if (!isVisible || !plantation.coordonnee) return null;
+                      
+                      return (
+                        <GeoJSON
+                          key={`plantation-${plantationId}`}
+                          data={plantation.coordonnee}
+                          style={plantationStyle}
+                          onEachFeature={onEachPlantationFeature(plantation)}
+                        />
+                      );
+                    })}
+                  </FeatureGroup>
+                </LayersControl.Overlay>
+              )}
+
+            </LayersControl>
+            <InitializeMapPanes />
+            <FitBounds polygons={visiblePolygons} />
+          </FeatureGroup>
+        </MapContainer>
+      </Box>
+
+      {/* Menu d'export */}
+      <Menu
+        anchorEl={exportMenuAnchor}
+        open={Boolean(exportMenuAnchor)}
+        onClose={() => setExportMenuAnchor(null)}
+      >
+        <MenuItem onClick={() => {
+          // Exporter toutes les plantations filtrées qui ont des coordonnées
+          const allPlantationIds = filteredPlantations
+            .filter(p => p.coordonnee) // Seulement celles avec coordonnées
+            .map(p => p.id || p._id);
+          console.log('🌱 Export de toutes les plantations filtrées:', allPlantationIds.length);
+          handleExportSelected(allPlantationIds);
+          setExportMenuAnchor(null);
+        }}>
+          <FileDownloadIcon sx={{ mr: 1 }} />
+          Exporter toutes les plantations filtrées
+        </MenuItem>
+        <MenuItem onClick={() => {
+          const visibleIds = filteredPlantations
+            .filter(p => visiblePlantations[p.id || p._id] && p.coordonnee)
+            .map(p => p.id || p._id);
+          console.log('👁️ Export des plantations visibles:', visibleIds.length);
+          handleExportSelected(visibleIds);
+          setExportMenuAnchor(null);
+        }}>
+          <FileDownloadIcon sx={{ mr: 1 }} />
+          Exporter les plantations visibles
+        </MenuItem>
+      </Menu>
+
+      {/* Dialogue d'export */}
+      <Dialog 
+        open={exportDialogOpen} 
+        onClose={() => setExportDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Exporter les plantations
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>Format d'export</InputLabel>
+              <Select
+                value={exportFormat}
+                label="Format d'export"
+                onChange={(e) => setExportFormat(e.target.value)}
+              >
+                <MenuItem value="geojson">GeoJSON (.geojson)</MenuItem>
+                <MenuItem value="kml">KML (.kml)</MenuItem>
+                <MenuItem value="gpx">GPX (.gpx)</MenuItem>
+                <MenuItem value="shapefile">CSV pour Shapefile (.csv)</MenuItem>
+              </Select>
+            </FormControl>
+            
+            <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+              {selectedPlantationsForExport.length > 0 
+                ? `${selectedPlantationsForExport.length} plantation(s) sélectionnée(s)`
+                : `${filteredPlantations.filter(p => visiblePlantations[p.id || p._id]).length} plantation(s) visible(s)`
+              }
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExportDialogOpen(false)}>
+            Annuler
+          </Button>
+          <Button 
+            onClick={handleExport} 
+            variant="contained" 
+            color="primary"
+            startIcon={<DownloadIcon />}
+          >
+            Exporter
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+// Styles pour les polygones avec panes spécifiques
+const paysStyle = {
+  color: "blue",
+  weight: 2,
+  fillColor: "rgba(0, 0, 255, 0.3)",
+  fillOpacity: 0.4,
+  pane: 'paysPane',
+};
+
+const zoneStyle = {
+  color: "green",
+  weight: 2,
+  fillColor: "rgba(0, 255, 0, 0.3)",
+  fillOpacity: 0.4,
+  pane: 'zoneInterditPane',
+};
+
+const regionStyle = {
+  color: "#FF8C00",
+  weight: 2,
+  fillColor: "rgba(255, 140, 0, 0.25)",
+  fillOpacity: 0.25,
+  pane: 'regionPane',
+};
+
+const plantationStyle = {
+  color: "red",
+  weight: 3,
+  fillColor: "rgba(255, 0, 0, 0.4)",
+  fillOpacity: 0.5,
+  pane: 'plantationPane', // Pane avec le z-index le plus élevé
+};
+
+// Composant pour initialiser les panes avec z-index spécifiques
+const InitializeMapPanes = () => {
+  const map = useMap();
+  
+  useEffect(() => {
+    // Créer des panes personnalisés avec des z-index spécifiques
+    if (!map.getPane('paysPane')) {
+      map.createPane('paysPane');
+      map.getPane('paysPane').style.zIndex = 200; // Le plus bas
+    }
+    
+    if (!map.getPane('regionPane')) {
+      map.createPane('regionPane');
+      map.getPane('regionPane').style.zIndex = 300;
+    }
+    
+    if (!map.getPane('zoneInterditPane')) {
+      map.createPane('zoneInterditPane');
+      map.getPane('zoneInterditPane').style.zIndex = 400;
+    }
+    
+    if (!map.getPane('plantationPane')) {
+      map.createPane('plantationPane');
+      map.getPane('plantationPane').style.zIndex = 500; // Le plus haut
+    }
+  }, [map]);
+  
+  return null;
+};
+
+// Ajustement automatique du zoom sur les polygones visibles
+const FitBounds = ({ polygons }) => {
+  const map = useMap();
+  
+  // Fonction pour valider un GeoJSON
+  const isValidGeoJSON = (data) => {
+    if (!data || typeof data !== 'object') return false;
+    if (!data.type) return false;
+    if (data.type === 'FeatureCollection' && Array.isArray(data.features)) return true;
+    if (data.type === 'Feature' && data.geometry) return true;
+    if (['Point', 'LineString', 'Polygon', 'MultiPoint', 'MultiLineString', 'MultiPolygon', 'GeometryCollection'].includes(data.type)) return true;
+    return false;
+  };
+
+  useEffect(() => {
+    if (!polygons || polygons.length === 0) return;
+    
+    try {
+      const bounds = L.latLngBounds([]);
+      let validPolygonsCount = 0;
+      
+      polygons.forEach((polygon) => {
+        // Vérifier les différents formats de coordonnées
+        const coords = polygon?.Coordonnee || polygon?.coordonnee;
+        if (coords && isValidGeoJSON(coords)) {
+          try {
+            const layer = L.geoJSON(coords);
+            const layerBounds = layer.getBounds();
+            if (layerBounds.isValid()) {
+              bounds.extend(layerBounds);
+              validPolygonsCount++;
+            }
+          } catch (geoError) {
+            // Ignore l'erreur silencieusement
+          }
+        }
+      });
+      
+      if (bounds.isValid() && validPolygonsCount > 0) {
+        map.fitBounds(bounds);
+      }
+    } catch (error) {
+      // Ignore l'erreur silencieusement
+    }
+  }, [polygons, map]);
+  
+  return null;
+};
+
+// Ajouter du CSS personnalisé pour les popups
+const style = document.createElement('style');
+style.textContent = `
+  .plantation-popup .leaflet-popup-content-wrapper {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  
+  .plantation-popup .leaflet-popup-content {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .plantation-popup .leaflet-popup-tip {
+    background: white;
+  }
+  
+  .zone-interdit-popup .leaflet-popup-content-wrapper {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(46,125,50,0.15);
+    border: 2px solid #2e7d32;
+  }
+  
+  .zone-interdit-popup .leaflet-popup-content {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .zone-interdit-popup .leaflet-popup-tip {
+    background: white;
+    border: 1px solid #2e7d32;
+  }
+  
+  .region-popup .leaflet-popup-content-wrapper {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(255,140,0,0.15);
+    border: 2px solid #FF8C00;
+  }
+  
+  .region-popup .leaflet-popup-content {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .region-popup .leaflet-popup-tip {
+    background: white;
+    border: 1px solid #FF8C00;
+  }
+`;
+
+if (!document.head.querySelector('style[data-plantation-popup]')) {
+  style.setAttribute('data-plantation-popup', 'true');
+  document.head.appendChild(style);
+}
+
+export default Mapping;

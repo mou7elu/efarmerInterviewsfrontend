@@ -81,12 +81,13 @@ const EditUserPage = () => {
         ]);
 
         const userData = userRes || {};
-        const usersList = (usersRes && usersRes.items) ? usersRes.items : (usersRes || []);
+        const usersData = usersRes && usersRes.data ? usersRes.data : usersRes;
+        const usersList = Array.isArray(usersData) ? usersData : (usersData && usersData.items ? usersData.items : []);
 
         // Mock profiles temporaire - remplacer quand /api/profiles sera disponible
         const mockProfiles = [
           { _id: '1', name: 'Administrateur' },
-          { _id: '2', name: 'Superviseur' },
+          { _id: '2', name: 'Enquêteur' },
           { _id: '3', name: 'Utilisateur' }
         ];
         setProfiles(mockProfiles);
@@ -106,8 +107,9 @@ const EditUserPage = () => {
           ResponsableId: userData.ResponsableId || ''
         });
 
+        // Afficher la photo si elle existe (déjà convertie en base64 par le backend)
         if (userData.Photo) {
-          setPhotoPreview(`/api/users/${id}/photo`);
+          setPhotoPreview(userData.Photo);
         }
       } catch (err) {
         console.error('Erreur lors du chargement de l\'utilisateur:', err);
@@ -182,26 +184,22 @@ const EditUserPage = () => {
         updateData.password = formData.password;
       }
 
+      // Convertir la photo en base64 si elle a été modifiée
+      if (formData.Photo && formData.Photo instanceof File) {
+        const base64Photo = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(formData.Photo);
+        });
+        updateData.Photo = base64Photo;
+      }
+
       console.log('Données de mise à jour:', updateData);
 
       // Mettre à jour l'utilisateur
       const updatedUser = await usersAPI.update(id, updateData);
       console.log('Utilisateur mis à jour:', updatedUser);
-
-      // Gérer l'upload de photo si une nouvelle photo a été sélectionnée
-      if (formData.Photo && formData.Photo instanceof File) {
-        try {
-          const photoFormData = new FormData();
-          photoFormData.append('photo', formData.Photo);
-          
-          await usersService.uploadPhoto(id, photoFormData);
-          console.log('Photo uploadée avec succès');
-        } catch (photoError) {
-          console.warn('Erreur upload photo:', photoError);
-          // Ne pas bloquer la sauvegarde pour une erreur de photo
-          // L'utilisateur sera informé que la modification de base a réussi
-        }
-      }
 
       navigate('/users', { 
         state: { 
@@ -437,7 +435,7 @@ const EditUserPage = () => {
                         >
                           <MenuItem value="">Aucun responsable</MenuItem>
                           {users.map((user) => (
-                            <MenuItem key={user._id} value={user._id}>
+                            <MenuItem key={user.id} value={user.id}>
                               {user.Pren_ut} {user.Nom_ut} ({user.email})
                             </MenuItem>
                           ))}

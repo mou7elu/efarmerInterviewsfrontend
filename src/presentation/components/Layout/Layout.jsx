@@ -45,7 +45,13 @@ import {
   Assignment as AssignmentIcon,
   Block as BlockIcon,
   Description as DescriptionIcon,
-  Place as PlaceIcon
+  Place as PlaceIcon,
+  Home as HomeIcon,
+  Domain as DomainIcon,
+  Map as MapIcon,
+  Apartment as ApartmentIcon,
+  Group as GroupIcon,
+  Landscape as LandscapeIcon
 } from '@mui/icons-material';
 
 import { useAuthStore } from '@presentation/stores/authStore.js';
@@ -60,7 +66,7 @@ const Layout = () => {
   const location = useLocation();
   
   const { user, logout } = useAuthStore();
-  
+  console.log(user);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -97,24 +103,31 @@ const Layout = () => {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'SIG', icon: <LocationIcon />, path: '/sig' },
-    { text: 'Entretiens', icon: <InterviewIcon />, path: '/interviews' },
-    { text: 'Producteurs', icon: <AgricultureIcon />, path: '/producteurs' },
-    { text: 'Parcelles', icon: <TerrainIcon />, path: '/parcelles' },
-    { text: 'Questionnaires', icon: <QuizIcon />, path: '/questionnaires' },
   ];
 
-  const questionnaireStructureMenuItems = [
-    { text: 'Questions', icon: <QuestionIcon />, path: '/questions' },
-    { text: 'Sections', icon: <ListIcon />, path: '/sections' },
-    { text: 'Volets', icon: <AssignmentIcon />, path: '/volets' },
+  const agricultureMenuItems = [
+    { text: 'Dénombrement des ménages', icon: <GroupIcon />, path: '/menages' },
+    { text: 'Identification des exploitants', icon: <AgricultureIcon />, path: '/producteurs-geojson' },
+    { text: 'Identification des exploitations', icon: <LandscapeIcon />, path: '/parcelles-geojson' },
   ];
+
+  const administrativeMenuItems = [
+     { text: 'Pays', icon: <PublicIcon />, path: '/pays' },
+    { text: 'Districts', icon: <LocationCityIcon />, path: '/districts' },
+    { text: 'Régions', icon: <MapIcon />, path: '/regions' },
+    { text: 'Départements', icon: <DomainIcon />, path: '/departements' },
+    { text: 'Sous-préfectures', icon: <DomainIcon />, path: '/sousprefectures' },
+    { text: 'Secteurs Admin.', icon: <MapIcon />, path: '/secteurs' },
+    { text: 'Zones de dénomb.', icon: <ApartmentIcon />, path: '/zones' },
+    { text: 'Localités', icon: <PlaceIcon />, path: '/villages' },
+    { text: 'Quartiers/Campements', icon: <HomeIcon />, path: '/localites' },
+    
+  ];
+
 
   const geoMenuItems = [
-    { text: 'Pays', icon: <PublicIcon />, path: '/pays' },
-    { text: 'Régions', icon: <LocationIcon />, path: '/regions' },
-    { text: 'Départements', icon: <LocationCityIcon />, path: '/departements' },
-    { text: 'Districts', icon: <LocationIcon />, path: '/districts' },
-    { text: 'Villages', icon: <PlaceIcon />, path: '/villages' },
+   
+    
     { text: 'Zones interdites', icon: <BlockIcon />, path: '/zones-interdites' },
   ];
 
@@ -151,13 +164,13 @@ const Layout = () => {
       </List>
       <Divider />
       
-      {/* Structure des questionnaires */}
+      {/* Module Agricole */}
       <List subheader={
-        <Typography variant="caption" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
-          Structure questionnaires
+        <Typography variant="caption" sx={{ px: 2, py: 1, color: 'text.secondary', fontWeight: 'bold' }}>
+          Agriculture
         </Typography>
       }>
-        {questionnaireStructureMenuItems.map((item) => (
+        {agricultureMenuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
               selected={location.pathname === item.path}
@@ -171,10 +184,50 @@ const Layout = () => {
       </List>
       <Divider />
       
+      {/* Module Administratif */}
+      <List subheader={
+        <Typography variant="caption" sx={{ px: 2, py: 1, color: 'text.secondary', fontWeight: 'bold' }}>
+          Module Administratif
+        </Typography>
+      }>
+        {administrativeMenuItems.map((item) => (
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton
+              selected={location.pathname === item.path}
+              onClick={() => handleNavigation(item.path)}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+      <Divider />
+      
+      {/* Structure des questionnaires */}
+      {/* <List subheader={
+        <Typography variant="caption" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
+          Questionnaires
+        </Typography>
+      }>
+        {questionnaireStructureMenuItems.map((item) => (
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton
+              selected={location.pathname === item.path}
+              onClick={() => handleNavigation(item.path)}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List> */}
+      <Divider />
+      
       {/* Données géographiques */}
       <List subheader={
         <Typography variant="caption" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
-          Données géographiques
+          Géographie
         </Typography>
       }>
         {geoMenuItems.map((item) => (
@@ -229,7 +282,7 @@ const Layout = () => {
           </ListItem>
         ))}
       </List>
-      <Divider />
+      {/* <Divider />
       <List subheader={
         <Typography variant="caption" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
           Actions rapides
@@ -244,30 +297,22 @@ const Layout = () => {
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>
-          <ListItemButton onClick={() => handleNavigation('/producteurs/create')}>
+          <ListItemButton onClick={() => handleNavigation('/producteurs-geojson')}>
             <ListItemIcon>
               <AgricultureIcon />
             </ListItemIcon>
-            <ListItemText primary="Nouveau producteur" />
+            <ListItemText primary="Producteur (GeoJSON)" />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>
-          <ListItemButton onClick={() => handleNavigation('/parcelles/create')}>
+          <ListItemButton onClick={() => handleNavigation('/parcelles-geojson')}>
             <ListItemIcon>
-              <TerrainIcon />
+              <LandscapeIcon />
             </ListItemIcon>
-            <ListItemText primary="Nouvelle parcelle" />
+            <ListItemText primary="Parcelle (GeoJSON)" />
           </ListItemButton>
         </ListItem>
-        <ListItem disablePadding>
-          <ListItemButton onClick={() => handleNavigation('/questionnaires/create')}>
-            <ListItemIcon>
-              <QuizIcon />
-            </ListItemIcon>
-            <ListItemText primary="Nouveau questionnaire" />
-          </ListItemButton>
-        </ListItem>
-      </List>
+      </List> */}
     </div>
   );
 
@@ -294,26 +339,46 @@ const Layout = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {/* Titre dynamique basé sur la route */}
             {location.pathname === '/dashboard' && 'Dashboard'}
+            {location.pathname === '/sig' && 'SIG - Système d\'Information Géographique'}
             {location.pathname === '/interviews' && 'Sessions de réponses'}
             {location.pathname === '/interviews/new' && 'Nouvelle session'}
+            
+            {/* Agriculture */}
+            {location.pathname === '/producteurs-geojson' && 'Gestion des identifications des exploitants'}
+            {location.pathname === '/parcelles-geojson' && 'Gestion des identifications d\'exploitations'}
             {location.pathname === '/producteurs' && 'Producteurs Agricoles'}
             {location.pathname === '/producteurs/create' && 'Nouveau Producteur'}
             {location.pathname === '/parcelles' && 'Parcelles'}
             {location.pathname === '/parcelles/create' && 'Nouvelle Parcelle'}
+            
+            {/* Administratif */}
+            {location.pathname === '/sousprefectures' && 'Sous-préfectures'}
+            {location.pathname === '/secteurs' && 'Secteurs Administratifs'}
+            {location.pathname === '/zones' && 'Zones de Dénombrement'}
+            {location.pathname === '/localites' && 'Quartiers / Campements'}
+            {location.pathname === '/menages' && 'Dénombrement des Ménages'}
+            
+            {/* Questionnaires */}
             {location.pathname === '/questionnaires' && 'Questionnaires'}
             {location.pathname === '/questionnaires/create' && 'Nouveau Questionnaire'}
             {location.pathname === '/questions' && 'Questions'}
             {location.pathname === '/sections' && 'Sections'}
             {location.pathname === '/volets' && 'Volets'}
-            {location.pathname === '/districts' && 'Districts'}
-            {location.pathname === '/villages' && 'Villages'}
-            {location.pathname === '/zones-interdites' && 'Zones interdites'}
-            {location.pathname === '/pieces' && 'Pièces d\'identité'}
+            
+            {/* Géographie */}
             {location.pathname === '/pays' && 'Pays'}
+            {location.pathname === '/districts' && 'Districts'}
             {location.pathname === '/regions' && 'Régions'}
             {location.pathname === '/departements' && 'Départements'}
+            {location.pathname === '/villages' && 'Localités'}
+            {location.pathname === '/zones-interdites' && 'Zones interdites'}
+            
+            {/* Référence */}
+            {location.pathname === '/pieces' && 'Pièces d\'identité'}
             {location.pathname === '/nationalites' && 'Nationalités'}
             {location.pathname === '/niveaux-scolaires' && 'Niveaux scolaires'}
+            
+            {/* Admin */}
             {location.pathname === '/users' && 'Utilisateurs'}
             {location.pathname === '/profile' && 'Mon profil'}
           </Typography>
@@ -321,10 +386,10 @@ const Layout = () => {
           <IconButton color="inherit" onClick={handleMenuClick}>
             <Avatar
               sx={{ width: 32, height: 32 }}
-              alt={user?.fullName}
+              alt={`${user?.firstName || ''} ${user?.lastName || ''}`}
               src={user?.photo}
             >
-              {user?.initials}
+              {user?.firstName?.[0] || 'U'}{user?.lastName?.[0] || ''}
             </Avatar>
           </IconButton>
           

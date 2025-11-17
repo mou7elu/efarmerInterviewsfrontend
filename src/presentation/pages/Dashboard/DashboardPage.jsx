@@ -1,292 +1,206 @@
 /**
- * Dashboard Page
+ * Dashboard Page - Version Clean Architecture
  * Page d'accueil avec vue d'ensemble des données
+ * Utilise les hooks personnalisés et composants réutilisables
  */
 
-import React, { useEffect, useState } from 'react';
-import { Pie, Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  ArcElement,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  Tooltip,
-  Legend
-} from 'chart.js';
-ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
+import React from 'react';
 import {
   Container,
   Typography,
   Grid,
-  Paper,
   Box,
-  Card,
-  CardContent,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Chip,
+  Alert,
   Button,
-  TextField,
-  FormControlLabel,
-  Switch
-
+  Divider
 } from '@mui/material';
-import html2pdf from 'html2pdf.js';
 import {
-  Event as EventIcon,
   People as PeopleIcon,
-  Schedule as ScheduleIcon,
+  Agriculture as AgricultureIcon,
+  Home as HomeIcon,
+  LocationCity as LocationCityIcon,
+  Landscape as LandscapeIcon,
+  Assignment as AssignmentIcon,
   CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon,
-  Add as AddIcon
+  HourglassEmpty as HourglassEmptyIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 
 import { useAuthStore } from '@presentation/stores/authStore.js';
-import { interviewsAPI, producteursAPI, questionnairesAPI } from '../../../services/api.js';
+import { useDashboardStats, useRecentActivities } from '@presentation/hooks/useDashboardStats.js';
 import LoadingSpinner from '@presentation/components/Common/LoadingSpinner.jsx';
+import StatsCard from '@presentation/components/Dashboard/StatsCard.jsx';
+import ChartSection from '@presentation/components/Dashboard/ChartSection.jsx';
+import ActivityTimeline from '@presentation/components/Dashboard/ActivityTimeline.jsx';
 
 const DashboardPage = () => {
-  const exportRef = React.useRef();
-
-  // Export as HTML
-  const handleExportHTML = () => {
-    const htmlContent = exportRef.current?.innerHTML;
-    const win = window.open('', '', 'width=900,height=700');
-    win.document.write('<html><head><title>Export HTML</title></head><body>' + htmlContent + '</body></html>');
-    win.document.close();
-  };
-
-  // Export as PDF
-  const handleExportPDF = () => {
-    if (exportRef.current) {
-      html2pdf().set({ filename: 'dashboard.pdf' }).from(exportRef.current).save();
-    }
-  };
-  const [showAll, setShowAll] = useState(false);
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        let interviewsRes;
-        let interviews = [];
-        let filterStart, filterEnd;
-        if (showAll) {
-          interviewsRes = await interviewsAPI.getAll();
-          interviews = interviewsRes.interviews || interviewsRes.data || interviewsRes || [];
-        } else {
-          if (startDate && endDate) {
-            filterStart = new Date(startDate);
-            filterEnd = new Date(endDate);
-          } else {
-            const today = new Date();
-            filterStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            filterEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
-          }
-          if (interviewsAPI.getByDate) {
-            interviewsRes = await interviewsAPI.getByDate(filterStart, filterEnd);
-            interviews = interviewsRes.interviews || interviewsRes.data || interviewsRes || [];
-          } else {
-            interviewsRes = await interviewsAPI.getAll();
-            interviews = (interviewsRes.interviews || interviewsRes.data || interviewsRes || []).filter(r => {
-              const created = new Date(r.createdAt);
-              return created >= filterStart && created <= filterEnd;
-            });
-          }
-        }
-        const total = interviews.length;
-        const completed = interviews.filter(r => {
-          if (typeof r.isCompleted !== 'undefined') return r.isCompleted;
-          return Array.isArray(r.reponses) && r.reponses.some(rep => rep.valeur && rep.valeur !== '');
-        }).length;
-        const inProgress = total - completed;
-        setStats({ total, completed, inProgress });
-        setResponsesToday(interviews);
-        const exploitantsSet = new Set();
-        interviews.forEach(r => {
-          if (r.exploitantId && r.exploitantId.$oid) {
-            exploitantsSet.add(r.exploitantId.$oid);
-          } else if (typeof r.exploitantId === 'string') {
-            exploitantsSet.add(r.exploitantId);
-          }
-        });
-        const repartitionQuestionnaire = {};
-        interviews.forEach(r => {
-          const qid = r.questionnaireId?.$oid || r.questionnaireId || 'N/A';
-          repartitionQuestionnaire[qid] = (repartitionQuestionnaire[qid] || 0) + 1;
-        });
-        const entretiensParHeure = {};
-        interviews.forEach(r => {
-          const h = new Date(r.createdAt).getHours();
-          entretiensParHeure[h] = (entretiensParHeure[h] || 0) + 1;
-        });
-        setKpi({
-          producteursUniques: exploitantsSet.size,
-          repartitionQuestionnaire,
-          entretiensParHeure
-        });
-      } catch (err) {
-        setStats({ total: 0, completed: 0, inProgress: 0 });
-        setResponsesToday([]);
-        setKpi({ producteursUniques: 0, repartitionQuestionnaire: {}, entretiensParHeure: {} });
-      }
-    };
-    fetchDashboardData();
-    const intervalId = setInterval(fetchDashboardData, 60000);
-    return () => clearInterval(intervalId);
-  }, [showAll, startDate, endDate]);
-  const [stats, setStats] = useState({ total: 0, completed: 0, inProgress: 0 });
-  const [responsesToday, setResponsesToday] = useState([]);
-  const [kpi, setKpi] = useState({ producteursUniques: 0, repartitionQuestionnaire: {}, entretiensParHeure: {} });
   const user = useAuthStore((state) => state.user);
+  const { stats, loading, error, refetch } = useDashboardStats();
+  const { activities, loading: activitiesLoading } = useRecentActivities(7);
 
-  // TODO: Add useEffect to fetch stats, responsesToday, and kpi from API
+  // Préparer les données pour les graphiques
+  const parcellesChartData = {
+    labels: Object.keys(stats.parcelles.byType),
+    datasets: [{
+      label: 'Nombre de parcelles',
+      data: Object.values(stats.parcelles.byType),
+      backgroundColor: [
+        'rgba(255, 99, 132, 0.8)',
+        'rgba(54, 162, 235, 0.8)',
+        'rgba(255, 206, 86, 0.8)',
+        'rgba(75, 192, 192, 0.8)',
+        'rgba(153, 102, 255, 0.8)',
+        'rgba(255, 159, 64, 0.8)',
+      ],
+    }]
+  };
+
+  const localitesChartData = {
+    labels: Object.keys(stats.localites.byType),
+    datasets: [{
+      label: 'Nombre de localités',
+      data: Object.values(stats.localites.byType),
+      backgroundColor: 'rgba(75, 192, 192, 0.8)',
+    }]
+    
+  };
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="xl">
+      {/* En-tête */}
       <Box mb={4}>
-        <Typography variant="h4" gutterBottom>
-          Bienvenue, {user?.fullName}
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Vue synthétique des indicateurs clés (KPI) sur les entretiens
-        </Typography>
-        <Box mt={2} display="flex" alignItems="center" gap={2}>
-          <FormControlLabel
-            control={<Switch checked={showAll} onChange={e => setShowAll(e.target.checked)} />}
-            label="Afficher tous les entretiens"
-          />
-          {!showAll && (
-            <>
-              <TextField
-                label="Date début"
-                type="date"
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                value={startDate ? startDate : ''}
-                onChange={e => setStartDate(e.target.value)}
-              />
-              <TextField
-                label="Date fin"
-                type="date"
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                value={endDate ? endDate : ''}
-                onChange={e => setEndDate(e.target.value)}
-              />
-            </>
-          )}
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Box>
+            <Typography variant="h4" gutterBottom fontWeight="bold">
+              Bienvenue, {user?.user.firstName || 'Utilisateur'} {user?.user.lastName || ''}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Tableau de bord - Vue d&apos;ensemble du système eFarmer
+            </Typography>
+          </Box>
+          
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={refetch}
+            disabled={loading}
+          >
+            Actualiser
+          </Button>
         </Box>
+        
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {error}
+          </Alert>
+        )}
       </Box>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={3} md={3}>
-          <Paper elevation={2} sx={{ p: 2, textAlign: 'center' }}>
-            <EventIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
-            <Typography variant="h4" component="div">{stats.total}</Typography>
-            <Typography color="text.secondary">Entretiens du jour</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={3} md={3}>
-          <Paper elevation={2} sx={{ p: 2, textAlign: 'center' }}>
-            <CheckCircleIcon color="success" sx={{ fontSize: 40, mb: 1 }} />
-            <Typography variant="h4" component="div">{stats.completed}</Typography>
-            <Typography color="text.secondary">Complétés</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={3} md={3}>
-          <Paper elevation={2} sx={{ p: 2, textAlign: 'center' }}>
-            <PeopleIcon color="warning" sx={{ fontSize: 40, mb: 1 }} />
-            <Typography variant="h4" component="div">{stats.inProgress}</Typography>
-            <Typography color="text.secondary">En cours</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={3} md={3}>
-          <Paper elevation={2} sx={{ p: 2, textAlign: 'center' }}>
-            <ScheduleIcon color="info" sx={{ fontSize: 40, mb: 1 }} />
-            <Typography variant="h4" component="div">{kpi.producteursUniques}</Typography>
-            <Typography color="text.secondary">Producteurs uniques</Typography>
-          </Paper>
-        </Grid>
-      </Grid>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={6}>
-          <Paper elevation={2} sx={{ p: 2 }}>
-            <Typography variant="h6">Répartition des entretiens par questionnaire</Typography>
-            <Pie
-              data={{
-                labels: Object.keys(kpi.repartitionQuestionnaire),
-                datasets: [{
-                  data: Object.values(kpi.repartitionQuestionnaire),
-                  backgroundColor: [
-                    '#1976d2', '#388e3c', '#fbc02d', '#d32f2f', '#7b1fa2', '#0288d1', '#c2185b', '#ffa000', '#388e3c', '#fbc02d'
-                  ],
-                }],
-              }}
+
+      {/* Section 1: Statistiques Principales */}
+      <Box mb={4}>
+        <Typography variant="h5" gutterBottom fontWeight="600" mb={3}>
+          📊 Statistiques Principales
+        </Typography>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              icon={PeopleIcon}
+              title="Producteurs"
+              value={stats.producteurs.total}
+              subtitle={`${stats.producteurs.actifs} actifs`}
+              color="primary"
+              loading={loading}
             />
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Paper elevation={2} sx={{ p: 2 }}>
-            <Typography variant="h6">Entretiens par heure</Typography>
-            <Bar
-              data={{
-                labels: Object.keys(kpi.entretiensParHeure).map(h => `${h}h`),
-                datasets: [{
-                  label: 'Nombre d’entretiens',
-                  data: Object.values(kpi.entretiensParHeure),
-                  backgroundColor: '#1976d2',
-                }],
-              }}
-              options={{
-                scales: {
-                  y: { beginAtZero: true }
-                }
-              }}
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              icon={AgricultureIcon}
+              title="Parcelles"
+              value={stats.parcelles.total}
+              subtitle={`${stats.parcelles.superficie.toFixed(2)} ha au total`}
+              color="success"
+              loading={loading}
             />
-          </Paper>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              icon={HomeIcon}
+              title="Ménages"
+              value={stats.menages.total}
+              subtitle="Enregistrés dans le système"
+              color="info"
+              loading={loading}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <StatsCard
+              icon={LocationCityIcon}
+              title="Villages"
+              value={stats.villages.total}
+              subtitle="Villages recensés"
+              color="warning"
+              loading={loading}
+            />
+          </Grid>
         </Grid>
-      </Grid>
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6" component="h2">
-                  Détail des entretiens du jour ({responsesToday.length})
-                </Typography>
-              </Box>
-              {responsesToday.length === 0 ? (
-                <Typography color="text.secondary">Aucun entretien enregistré aujourd'hui</Typography>
-              ) : (
-                <List>
-                  {responsesToday.map((r) => (
-                    <ListItem key={r.id} divider>
-                      <ListItemIcon>
-                        <EventIcon />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={`Exploitant: ${r.exploitantId?.$oid || r.exploitantId || 'inconnu'}`}
-                        secondary={`Questionnaire: ${r.questionnaireId?.$oid || r.questionnaireId || 'N/A'} | Créé à: ${format(new Date(r.createdAt), 'HH:mm', { locale: fr })}`}
-                      />
-                      <Chip
-                        label={r.isCompleted ? 'Complété' : 'En cours'}
-                        color={r.isCompleted ? 'success' : 'warning'}
-                        size="small"
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-            </CardContent>
-          </Card>
+      </Box>
+
+
+      
+
+      <Divider sx={{ my: 4 }} />
+
+      {/* Section 3: Graphiques */}
+      <Box mb={4}>
+        <Typography variant="h5" gutterBottom fontWeight="600" mb={3}>
+          📈 Analyses Graphiques
+        </Typography>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <ChartSection
+              title="Répartition des Parcelles par Type de Culture"
+              type="doughnut"
+              data={parcellesChartData}
+              loading={loading}
+              height={350}
+            />
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <ChartSection
+              title="Répartition des Localités par Type"
+              type="bar"
+              data={localitesChartData}
+              loading={loading}
+              height={350}
+            />
+          </Grid>
         </Grid>
-      </Grid>
+      </Box>
+
+      <Divider sx={{ my: 4 }} />
+
+      {/* Section 4: Activités Récentes */}
+      <Box mb={4}>
+        <Typography variant="h5" gutterBottom fontWeight="600" mb={3}>
+          🕒 Activités Récentes (7 derniers jours)
+        </Typography>
+        
+        <ActivityTimeline 
+          activities={activities} 
+          loading={activitiesLoading}
+          maxItems={10}
+        />
+      </Box>
     </Container>
   );
 };

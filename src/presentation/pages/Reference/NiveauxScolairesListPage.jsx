@@ -1,10 +1,10 @@
 /**
  * Niveaux Scolaires List Page
  * Page de gestion des niveaux scolaires (CRUD)
+ * Harmonisée avec le design pattern établi
  */
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -20,8 +20,7 @@ import {
   Button,
   Box,
   TextField,
-  Alert,
-  Tooltip as MuiTooltip,
+  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -29,80 +28,65 @@ import {
   Grid,
   Card,
   CardContent,
-  Fab,
-  Tooltip,
-  Chip,
-  LinearProgress,
-  Breadcrumbs,
-  Link
+  Fab
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  Visibility as ViewIcon,
   Delete as DeleteIcon,
   Search as SearchIcon,
-  School as SchoolIcon,
-  TrendingUp as TrendingUpIcon,
-  NavigateNext as NavigateNextIcon
+  School as SchoolIcon
 } from '@mui/icons-material';
 
 import LoadingSpinner from '@presentation/components/Common/LoadingSpinner.jsx';
 import { niveauxScolairesAPI, handleApiError } from '@/services/api.js';
 
+
 const NiveauxScolairesListPage = () => {
-  // État local
-  const navigate = useNavigate();
-  const location = useLocation();
-  
+  // États pour les données
   const [niveaux, setNiveaux] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // États pour la pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   
-  // États pour la suppression uniquement
+  // États pour la recherche
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // États pour les dialogs
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedNiveau, setSelectedNiveau] = useState(null);
+  
+  // États pour le formulaire
+  const [formData, setFormData] = useState({
+    Lib_NiveauScolaire: ''
+  });
 
   useEffect(() => {
     loadData();
   }, [page, rowsPerPage, searchTerm]);
 
-  // Gérer le message de succès depuis la navigation
-  useEffect(() => {
-    if (location.state?.successMessage) {
-      setSuccessMessage(location.state.successMessage);
-      // Nettoyer le state pour éviter que le message persiste
-      window.history.replaceState({}, document.title);
-      
-      // Masquer le message après 5 secondes
-      const timer = setTimeout(() => {
-        setSuccessMessage('');
-      }, 5000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [location]);
-
   const loadData = async () => {
     setLoading(true);
+    setError('');
     try {
       const response = await niveauxScolairesAPI.getAll({
-        search: searchTerm,
-        page: page + 1,
-        limit: rowsPerPage
+        limit: 2000
       });
       
       const data = response.data || response;
-      setNiveaux(Array.isArray(data) ? data : data.items || []);
-      setTotalCount(data.total || data.length || 0);
+      const items = Array.isArray(data) ? data : data.items || [];
+      
+      setNiveaux(items);
+      setTotalCount(data.total || items.length);
     } catch (error) {
       console.error('Erreur lors du chargement des niveaux scolaires:', error);
-      // Fallback en cas d'erreur API
+      setError(handleApiError(error));
       setNiveaux([]);
       setTotalCount(0);
     } finally {
@@ -110,226 +94,206 @@ const NiveauxScolairesListPage = () => {
     }
   };
 
-  const handlePageChange = (event, newPage) => {
-    setPage(newPage);
+  const handleFormChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const handleRowsPerPageChange = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+  const resetForm = () => {
+    setFormData({
+      Lib_NiveauScolaire: ''
+    });
   };
 
-  const handleCreate = () => {
-    navigate('/niveaux-scolaires/new');
+  const handleCreateClick = () => {
+    resetForm();
+    setCreateDialogOpen(true);
   };
 
-  const handleView = (niveau) => {
-    navigate(`/niveaux-scolaires/${niveau.id}`);
+  const handleEditClick = (niveau) => {
+    setSelectedNiveau(niveau);
+    setFormData({
+      Lib_NiveauScolaire: niveau.Lib_NiveauScolaire || ''
+    });
+    setEditDialogOpen(true);
   };
 
-  const handleEdit = (niveau) => {
-    navigate(`/niveaux-scolaires/${niveau.id}/edit`);
-  };
-
-  const handleDelete = (niveau) => {
+  const handleDeleteClick = (niveau) => {
     setSelectedNiveau(niveau);
     setDeleteDialogOpen(true);
   };
 
+  const handleSubmitCreate = async () => {
+    if (!formData.Lib_NiveauScolaire || formData.Lib_NiveauScolaire.trim() === '') {
+      setError('Le libellé du niveau scolaire est requis');
+      return;
+    }
+
+    try {
+      await niveauxScolairesAPI.create(formData);
+      setCreateDialogOpen(false);
+      resetForm();
+      await loadData();
+    } catch (error) {
+      console.error('Erreur lors de la création:', error);
+      setError(handleApiError(error));
+    }
+  };
+
+  const handleSubmitEdit = async () => {
+    if (!formData.Lib_NiveauScolaire || formData.Lib_NiveauScolaire.trim() === '') {
+      setError('Le libellé du niveau scolaire est requis');
+      return;
+    }
+
+    try {
+      const niveauId = selectedNiveau.id || selectedNiveau._id;
+      await niveauxScolairesAPI.update(niveauId, formData);
+      setEditDialogOpen(false);
+      setSelectedNiveau(null);
+      resetForm();
+      await loadData();
+    } catch (error) {
+      console.error('Erreur lors de la modification:', error);
+      setError(handleApiError(error));
+    }
+  };
+
   const handleSubmitDelete = async () => {
     try {
-      await niveauxScolairesAPI.delete(selectedNiveau.id);
+      const niveauId = selectedNiveau.id || selectedNiveau._id;
+      await niveauxScolairesAPI.delete(niveauId);
       setDeleteDialogOpen(false);
       setSelectedNiveau(null);
       await loadData();
-      setSuccessMessage('Niveau scolaire supprimé avec succès');
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       setError(handleApiError(error));
     }
   };
 
-  const getNiveauColor = (niveau) => {
-    const colors = {
-      0: '#f44336', // Rouge pour aucun niveau
-      1: '#ff9800', // Orange pour primaire/alphabétisation
-      2: '#2196f3', // Bleu pour secondaire 1er cycle/professionnel
-      3: '#4caf50', // Vert pour secondaire 2nd cycle
-      4: '#9c27b0'  // Violet pour supérieur
-    };
-    return colors[niveau] || '#757575';
-  };
-
-  const getNiveauLabel = (niveau) => {
-    const labels = {
-      0: 'Aucun',
-      1: 'Base',
-      2: 'Moyen',
-      3: 'Avancé',
-      4: 'Supérieur'
-    };
-    return labels[niveau] || 'Non défini';
-  };
-
-  const getCategoryStats = () => {
-    const stats = {};
-    for (let i = 0; i <= 4; i++) {
-      stats[i] = niveaux.filter(n => n.niveau === i).length;
-    }
-    return stats;
-  };
+  const filteredNiveaux = niveaux.filter(niveau =>
+    niveau.Lib_NiveauScolaire?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) {
     return <LoadingSpinner size={60} message="Chargement des niveaux scolaires..." />;
   }
 
-  const categoryStats = getCategoryStats();
-
   return (
     <Container maxWidth="xl">
-      {/* En-tête avec breadcrumbs */}
-      <Box mb={4}>
-        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} mb={2}>
-          <Link color="inherit" href="/pays">
-            Données de référence
-          </Link>
-          <Typography color="text.primary">Niveaux scolaires</Typography>
-        </Breadcrumbs>
-        
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h4" component="h1">
-            Niveaux scolaires
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreate}
-          >
-            Nouveau niveau
-          </Button>
-        </Box>
-        
-        {/* Statistiques rapides */}
-        <Grid container spacing={2} mb={3}>
-          <Grid item xs={12} sm={6} md={2}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <Typography variant="h4" color="primary">
-                  {niveaux.length}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Total niveaux
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-        </Grid>
+      {/* En-tête */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1">
+          <SchoolIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+          Niveaux scolaires
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleCreateClick}
+        >
+          Nouveau niveau scolaire
+        </Button>
       </Box>
 
-      {/* Message de succès */}
-      {successMessage && (
-        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccessMessage('')}>
-          {successMessage}
-        </Alert>
+      {/* Affichage erreur */}
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
       )}
+
+      {/* Statistique */}
+      <Grid container spacing={2} mb={3}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="primary">
+                {totalCount}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Total niveaux scolaires
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Barre de recherche */}
       <Box mb={3}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              placeholder="Rechercher par nom, code ou description..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
-              }}
-            />
-          </Grid>
-        </Grid>
+        <TextField
+          fullWidth
+          placeholder="Rechercher un niveau scolaire..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+          }}
+        />
       </Box>
 
-      {/* Tableau des niveaux scolaires */}
+      {/* Tableau */}
       <Paper>
         <TableContainer>
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell>Niveau scolaire</TableCell>
-                <TableCell>ID</TableCell>
-                <TableCell>Date de création</TableCell>
                 <TableCell align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {niveaux
+              {filteredNiveaux
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((niveau) => (
-                <TableRow key={niveau.id} hover>
-                  <TableCell>
-                    <Box display="flex" alignItems="center">
-                      <SchoolIcon sx={{ mr: 1, color: getNiveauColor(0) }} />
-                      <Box>
-                        <Typography variant="body1" fontWeight="medium">
+                  <TableRow key={niveau.id || niveau._id} hover>
+                    <TableCell>
+                      <Box display="flex" alignItems="center">
+                        <SchoolIcon sx={{ mr: 1, color: 'primary.main' }} />
+                        <Typography variant="body1">
                           {niveau.Lib_NiveauScolaire}
                         </Typography>
                       </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" fontFamily="monospace">
-                      {niveau.id ? niveau.id.slice(-8) : 'N/A'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(niveau.createdAt).toLocaleDateString('fr-FR')}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="center">
-                    <MuiTooltip title="Voir les détails">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleView(niveau)}
-                      >
-                        <ViewIcon />
-                      </IconButton>
-                    </MuiTooltip>
-                    <MuiTooltip title="Modifier">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEdit(niveau)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </MuiTooltip>
-                    <MuiTooltip title="Supprimer">
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDelete(niveau)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </MuiTooltip>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Modifier">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEditClick(niveau)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Supprimer">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteClick(niveau)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </TableContainer>
-        
+
         <TablePagination
           rowsPerPageOptions={[5, 10, 25, 50]}
           component="div"
-          count={totalCount}
+          count={filteredNiveaux.length}
           rowsPerPage={rowsPerPage}
           page={page}
-          onPageChange={handlePageChange}
-          onRowsPerPageChange={handleRowsPerPageChange}
+          onPageChange={(event, newPage) => setPage(newPage)}
+          onRowsPerPageChange={(event) => {
+            setRowsPerPage(parseInt(event.target.value, 10));
+            setPage(0);
+          }}
           labelRowsPerPage="Lignes par page:"
           labelDisplayedRows={({ from, to, count }) => 
             `${from}-${to} sur ${count}`
@@ -342,30 +306,121 @@ const NiveauxScolairesListPage = () => {
         color="primary"
         aria-label="add"
         sx={{ position: 'fixed', bottom: 16, right: 16 }}
-        onClick={handleCreate}
+        onClick={handleCreateClick}
       >
         <AddIcon />
       </Fab>
 
+      {/* Dialog de création */}
+      <Dialog
+        open={createDialogOpen}
+        onClose={() => {
+          setCreateDialogOpen(false);
+          resetForm();
+          setError('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Nouveau niveau scolaire</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Libellé du niveau scolaire"
+              value={formData.Lib_NiveauScolaire}
+              onChange={(e) => handleFormChange('Lib_NiveauScolaire', e.target.value)}
+              required
+              placeholder="Ex: Primaire, Secondaire, Universitaire..."
+              autoFocus
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setCreateDialogOpen(false);
+            resetForm();
+            setError('');
+          }}>
+            Annuler
+          </Button>
+          <Button 
+            onClick={handleSubmitCreate} 
+            variant="contained"
+            disabled={!formData.Lib_NiveauScolaire || formData.Lib_NiveauScolaire.trim() === ''}
+          >
+            Créer
+          </Button>
+        </DialogActions>
+      </Dialog>
 
+      {/* Dialog de modification */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setSelectedNiveau(null);
+          resetForm();
+          setError('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Modifier le niveau scolaire</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Libellé du niveau scolaire"
+              value={formData.Lib_NiveauScolaire}
+              onChange={(e) => handleFormChange('Lib_NiveauScolaire', e.target.value)}
+              required
+              autoFocus
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setEditDialogOpen(false);
+            setSelectedNiveau(null);
+            resetForm();
+            setError('');
+          }}>
+            Annuler
+          </Button>
+          <Button 
+            onClick={handleSubmitEdit} 
+            variant="contained"
+            disabled={!formData.Lib_NiveauScolaire || formData.Lib_NiveauScolaire.trim() === ''}
+          >
+            Modifier
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Dialog de suppression */}
       <Dialog
         open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setSelectedNiveau(null);
+        }}
         maxWidth="sm"
       >
         <DialogTitle>Confirmer la suppression</DialogTitle>
         <DialogContent>
           <Typography>
-            Êtes-vous sûr de vouloir supprimer le niveau scolaire "{selectedNiveau?.nom}" ?
+            Êtes-vous sûr de vouloir supprimer le niveau scolaire <strong>"{selectedNiveau?.Lib_NiveauScolaire}"</strong> ?
           </Typography>
-          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-            Cette action peut affecter les producteurs ayant ce niveau scolaire.
+          <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+            Cette action est irréversible et peut affecter les producteurs ayant ce niveau scolaire.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>
+          <Button onClick={() => {
+            setDeleteDialogOpen(false);
+            setSelectedNiveau(null);
+          }}>
             Annuler
           </Button>
           <Button 

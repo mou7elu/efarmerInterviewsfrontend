@@ -18,78 +18,102 @@ import {
   TableRow,
   Chip,
   IconButton,
-  Alert,
-  Avatar,
-  Breadcrumbs,
-  Link,
   TablePagination,
   TextField,
-  InputAdornment,
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Grid,
+  Card,
+  CardContent,
+  Fab,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { 
-  Add as AddIcon, 
-  Visibility as ViewIcon,
+  Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Search as SearchIcon,
-  FilterList as FilterIcon,
-  NavigateNext as NavigateNextIcon,
   Block as BlockIcon,
   Public as PublicIcon,
-  Place as PlaceIcon
 } from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 
 import LoadingSpinner from '@presentation/components/Common/LoadingSpinner.jsx';
-import { producteursAPI, questionnairesAPI, interviewsAPI, usersAPI, villagesAPI, zonesInterditesAPI, profilesAPI, paysAPI, regionsAPI, departementsAPI, sousprefsAPI, parcellesAPI, handleApiError } from '../../../services/api.js';
+import GeoJSONInput from '@presentation/components/Common/GeoJSONInput.jsx';
+import { zonesInterditesAPI, paysAPI, handleApiError } from '../../../services/api.js';
 
 const ZonesInterditesPage = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [loading, setLoading] = useState(true);
+  // États locaux
   const [zonesInterdites, setZonesInterdites] = useState([]);
   const [filteredZones, setFilteredZones] = useState([]);
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
-  
-  // Pagination
+  const [pays, setPays] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  
-  // Filtres et recherche
+  const [rowsPerPage, setRowsPerPage] = useState(25);
   const [searchTerm, setSearchTerm] = useState('');
   const [paysFilter, setPaysFilter] = useState('');
   const [sommeilFilter, setSommeilFilter] = useState('');
-  const [pays, setPays] = useState([]);
+  
+  // États pour les modals
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedZone, setSelectedZone] = useState(null);
+  
+  // États pour le formulaire
+  const [formData, setFormData] = useState({
+    Lib_zi: '',
+    Coordonnee: null,
+    Sommeil: false,
+    PaysId: '',
+  });
 
   useEffect(() => {
     loadData();
+    loadPays();
   }, []);
 
+  // Appliquer les filtres
   useEffect(() => {
-    applyFilters();
+    if (!searchTerm && !paysFilter && !sommeilFilter) {
+      setFilteredZones(zonesInterdites);
+    } else {
+      const filtered = zonesInterdites.filter(z => {
+        const Lib_zi = z.Lib_zi || '';
+        
+        // Comparer les IDs correctement (string ou objet)
+        const zonePaysId = typeof z.PaysId === 'object' ? (z.PaysId._id || z.PaysId.id) : z.PaysId;
+        const paysMatch = !paysFilter || zonePaysId === paysFilter;
+        
+        const sommeilMatch = !sommeilFilter || z.Sommeil.toString() === sommeilFilter;
+        
+        const searchMatch = !searchTerm || 
+          Lib_zi.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        return searchMatch && paysMatch && sommeilMatch;
+      });
+      setFilteredZones(filtered);
+    }
+    setPage(0);
   }, [zonesInterdites, searchTerm, paysFilter, sommeilFilter]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError('');
       
-      // Charger les données en parallèle
-      const [zonesResponse, paysResponse] = await Promise.all([
-        zonesInterditesAPI.getAll(),
-        paysAPI.getAll()
-      ]);
+      const response = await zonesInterditesAPI.getAll({ limit: 2000 });
+      const data = response.data || response;
+      const zonesData = data.items || data || [];
       
-      setZonesInterdites(zonesResponse.data || zonesResponse);
-      setPays(paysResponse.data || paysResponse);
-      
+      setZonesInterdites(zonesData);
+      setFilteredZones(zonesData);
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
       setError(handleApiError(error));
@@ -98,346 +122,490 @@ const ZonesInterditesPage = () => {
     }
   };
 
-  const applyFilters = () => {
-    let filtered = [...zonesInterdites];
-
-    // Filtre par recherche (libellé de la zone)
-    if (searchTerm) {
-      filtered = filtered.filter(zone => 
-        zone.Lib_zi.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Filtre par pays
-    if (paysFilter) {
-      filtered = filtered.filter(zone => zone.Pays?.id === paysFilter);
-    }
-
-    // Filtre par statut sommeil
-    if (sommeilFilter !== '') {
-      const isActive = sommeilFilter === 'false';
-      filtered = filtered.filter(zone => zone.Sommeil !== isActive);
-    }
-
-    setFilteredZones(filtered);
-    setPage(0); // Reset pagination
-  };
-
-  const getPaysInfo = (paysId) => {
-    return pays.find(p => p._id === paysId);
-  };
-
-  const handleDelete = async (id) => {
-    if (globalThis.confirm('Êtes-vous sûr de vouloir supprimer cette zone interdite ?')) {
-      try {
-        // Supprimer via l'API
-        await zonesInterditesAPI.delete(id);
-        console.log('Suppression réussie:', id);
-        setZonesInterdites(prev => prev.filter(z => z._id !== id));
-        setSuccessMessage('Zone interdite supprimée avec succès');
-      } catch (error) {
-        setError('Erreur lors de la suppression');
-      }
-    }
-  };
-
-  const handleToggleSommeil = async (id) => {
+  const loadPays = async () => {
     try {
-      // Simulation du changement de statut
-      setZonesInterdites(prev => prev.map(z => 
-        z._id === id 
-          ? { ...z, Sommeil: !z.Sommeil, updatedAt: new Date().toISOString() }
-          : z
-      ));
-      setSuccessMessage('Statut de la zone interdite mis à jour');
+      const response = await paysAPI.getAll({ limit: 2000 });
+      const data = response.data || response;
+      const paysData = data.items || data || [];
+      setPays(paysData);
     } catch (error) {
-      setError('Erreur lors de la mise à jour');
+      console.error('Erreur lors du chargement des pays:', error);
     }
   };
 
-  const handleChangePage = (event, newPage) => {
+  // Calcul des statistiques
+  const stats = {
+    total: zonesInterdites.length,
+    actives: zonesInterdites.filter(z => !z.Sommeil).length,
+    sommeil: zonesInterdites.filter(z => z.Sommeil).length,
+    pays: new Set(zonesInterdites.map(z => {
+      const id = typeof z.PaysId === 'object' ? (z.PaysId._id || z.PaysId.id) : z.PaysId;
+      return id;
+    }).filter(Boolean)).size
+  };
+
+  const handlePageChange = (event, newPage) => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
+  const handleRowsPerPageChange = (event) => {
+    setRowsPerPage(Number.parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handleFormChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      Lib_zi: '',
+      Coordonnee: null,
+      Sommeil: false,
+      PaysId: '',
+    });
+  };
+
+  const handleCreate = () => {
+    resetForm();
+    setCreateDialogOpen(true);
+  };
+
+  const handleEdit = (zone) => {
+    setSelectedZone(zone);
+    setFormData({
+      Lib_zi: zone.Lib_zi || '',
+      Coordonnee: zone.Coordonnee || null,
+      Sommeil: zone.Sommeil || false,
+      PaysId: typeof zone.PaysId === 'object' ? (zone.PaysId._id || zone.PaysId.id) : zone.PaysId,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleDelete = (zone) => {
+    setSelectedZone(zone);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleSubmitCreate = async () => {
+    try {
+      await zonesInterditesAPI.create(formData);
+      setCreateDialogOpen(false);
+      resetForm();
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de la création:', error);
+      setError(handleApiError(error));
+    }
+  };
+
+  const handleSubmitEdit = async () => {
+    try {
+      const zoneId = selectedZone.id || selectedZone._id;
+      await zonesInterditesAPI.update(zoneId, formData);
+      setEditDialogOpen(false);
+      setSelectedZone(null);
+      resetForm();
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de la modification:', error);
+      setError(handleApiError(error));
+    }
+  };
+
+  const handleSubmitDelete = async () => {
+    try {
+      const zoneId = selectedZone.id || selectedZone._id;
+      await zonesInterditesAPI.delete(zoneId);
+      setDeleteDialogOpen(false);
+      setSelectedZone(null);
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      setError(handleApiError(error));
+    }
+  };
+
+  const getPaysName = (paysId) => {
+    if (!paysId) return '—';
+    
+    // Si paysId est un objet avec _id ou id
+    const searchId = typeof paysId === 'object' ? (paysId._id || paysId.id) : paysId;
+    
+    const paysItem = pays.find(p => (p._id || p.id) === searchId);
+    return paysItem ? (paysItem.Lib_pays || '—') : '—';
   };
 
   if (loading) {
     return <LoadingSpinner size={60} message="Chargement des zones interdites..." />;
   }
 
-  // Pagination des données
-  const paginatedZones = filteredZones.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
-
   return (
-    <Container maxWidth="lg">
-      {/* Breadcrumbs */}
+    <Container maxWidth="xl">
+      {/* En-tête */}
+      <Box mb={4}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h4" component="h1">
+            Zones interdites
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleCreate}
+          >
+            Nouvelle zone interdite
+          </Button>
+        </Box>
+        
+        {/* Statistiques */}
+        <Grid container spacing={2} mb={3}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" color="primary">
+                  {stats.total}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Total zones
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" color="success.main">
+                  {stats.actives}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Zones actives
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" color="warning.main">
+                  {stats.sommeil}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  En sommeil
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" color="info.main">
+                  {stats.pays}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Pays
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* Barre de recherche */}
       <Box mb={3}>
-        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />}>
-          <Link color="inherit" href="/dashboard">
-            Agriculture
-          </Link>
-          <Typography color="text.primary">Zones interdites</Typography>
-        </Breadcrumbs>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              placeholder="Rechercher une zone interdite..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par pays</InputLabel>
+              <Select
+                value={paysFilter}
+                onChange={(e) => setPaysFilter(e.target.value)}
+                label="Filtrer par pays"
+              >
+                <MenuItem value="">Tous les pays</MenuItem>
+                {pays.map((p) => (
+                  <MenuItem key={p._id || p.id} value={p._id || p.id}>
+                    {p.Lib_pays || '—'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par statut</InputLabel>
+              <Select
+                value={sommeilFilter}
+                onChange={(e) => setSommeilFilter(e.target.value)}
+                label="Filtrer par statut"
+              >
+                <MenuItem value="">Tous</MenuItem>
+                <MenuItem value="false">Actif</MenuItem>
+                <MenuItem value="true">En sommeil</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
       </Box>
 
-      {successMessage && (
-        <Alert severity="success" sx={{ mb: 3 }}>
-          {successMessage}
-        </Alert>
-      )}
-
+      {/* Messages d'erreur */}
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
+        <Box mb={2}>
+          <Typography variant="body1" color="error">
+            Erreur : {error}
+          </Typography>
+        </Box>
       )}
 
-      {/* En-tête avec actions */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-        <Box display="flex" alignItems="center">
-          <Avatar sx={{ mr: 2, bgcolor: 'error.main' }}>
-            <BlockIcon />
-          </Avatar>
-          <Box>
-            <Typography variant="h4" component="h1">
-              Zones interdites
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Gestion des zones d'exploitation interdites
-            </Typography>
-          </Box>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/zones-interdites/new')}
-          size="large"
-        >
-          Nouvelle zone interdite
-        </Button>
-      </Box>
-
-      {/* Filtres et recherche */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
-          <TextField
-            placeholder="Rechercher une zone interdite..."
-            variant="outlined"
-            size="small"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ minWidth: 300 }}
-          />
-          
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Pays</InputLabel>
-            <Select
-              value={paysFilter}
-              onChange={(e) => setPaysFilter(e.target.value)}
-              label="Pays"
-            >
-              <MenuItem value="">Tous les pays</MenuItem>
-              {pays.map((paysItem) => (
-                <MenuItem key={paysItem._id} value={paysItem._id}>
-                  {paysItem.libPays?._value || paysItem.libPays || paysItem._id}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel>Statut</InputLabel>
-            <Select
-              value={sommeilFilter}
-              onChange={(e) => setSommeilFilter(e.target.value)}
-              label="Statut"
-            >
-              <MenuItem value="">Tous</MenuItem>
-              <MenuItem value="false">Actif</MenuItem>
-              <MenuItem value="true">En sommeil</MenuItem>
-            </Select>
-          </FormControl>
-          
-          <Box display="flex" alignItems="center" gap={1} ml="auto">
-            <FilterIcon color="action" />
-            <Typography variant="body2" color="text.secondary">
-              {filteredZones.length} zone{filteredZones.length > 1 ? 's' : ''} trouvée{filteredZones.length > 1 ? 's' : ''}
-            </Typography>
-          </Box>
-        </Box>
+      {/* Tableau */}
+      <Paper>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Zone interdite</TableCell>
+                <TableCell>Pays</TableCell>
+                <TableCell>Statut</TableCell>
+                <TableCell align="center">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredZones.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} align="center">
+                    <Typography variant="body2" color="textSecondary" sx={{ py: 4 }}>
+                      {searchTerm || paysFilter || sommeilFilter ? 'Aucune zone interdite trouvée' : 'Aucune donnée'}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredZones
+                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                  .map((zone) => (
+                    <TableRow key={zone._id || zone.id} hover>
+                      <TableCell>
+                        <Box display="flex" alignItems="center">
+                          <BlockIcon sx={{ mr: 1, color: 'error.main' }} />
+                          <Typography variant="body1" fontWeight="medium">
+                            {zone.Lib_zi || '—'}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box display="flex" alignItems="center">
+                          <PublicIcon sx={{ mr: 0.5, fontSize: 16, color: 'text.secondary' }} />
+                          {getPaysName(zone.PaysId)}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={zone.Sommeil ? 'En sommeil' : 'Actif'}
+                          color={zone.Sommeil ? 'warning' : 'success'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Modifier">
+                          <IconButton size="small" onClick={() => handleEdit(zone)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Supprimer">
+                          <IconButton size="small" color="error" onClick={() => handleDelete(zone)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        
+        <TablePagination
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          component="div"
+          count={filteredZones.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          labelRowsPerPage="Lignes par page:"
+        />
       </Paper>
 
-      {/* Tableau des zones interdites */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Zone interdite</TableCell>
-              <TableCell>Pays</TableCell>
-              <TableCell>Coordonnées</TableCell>
-              <TableCell>Statut</TableCell>
-              <TableCell>Date de création</TableCell>
-              <TableCell align="center">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {paginatedZones.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                  <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-                    <BlockIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
-                    <Typography variant="h6" color="text.secondary">
-                      Aucune zone interdite trouvée
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Commencez par créer une nouvelle zone interdite
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={() => navigate('/zones-interdites/new')}
-                    >
-                      Créer une zone interdite
-                    </Button>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedZones.map((zone) => {
-                const pays = getPaysInfo(zone.Pays?.id);
-                
-                return (
-                  <TableRow key={zone.id} hover>
-                    <TableCell>
-                      <Box display="flex" alignItems="center" gap={2}>
-                        <Avatar sx={{ bgcolor: 'error.main', width: 32, height: 32 }}>
-                          <BlockIcon fontSize="small" />
-                        </Avatar>
-                        <Typography variant="body2" fontWeight="bold">
-                          {zone.Lib_zi}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <Box display="flex" alignItems="center" gap={2}>
-                        <Avatar sx={{ bgcolor: 'success.main', width: 32, height: 32 }}>
-                          <PublicIcon fontSize="small" />
-                        </Avatar>
-                        <Box>
-                          {pays ? (
-                            <>
-                              <Typography variant="body2" fontWeight="bold">
-                                {pays.libPays?._value || pays.libPays || 'Nom non disponible'}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                ID: {pays._id}
-                              </Typography>
-                            </>
-                          ) : (
-                            <Typography variant="body2" color="error">
-                              Pays introuvable
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <PlaceIcon 
-                          fontSize="small" 
-                          color={zone.Coordonnee ? 'primary' : 'disabled'}
-                        />
-                        <Typography variant="body2" color={zone.Coordonnee ? 'text.primary' : 'text.secondary'}>
-                          {zone.Coordonnee ? 'Géolocalisée' : 'Non géolocalisée'}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <Chip 
-                        label={zone.Sommeil ? 'En sommeil' : 'Actif'}
-                        color={zone.Sommeil ? 'warning' : 'success'}
-                        size="small"
-                        variant={zone.Sommeil ? 'filled' : 'outlined'}
-                        onClick={() => handleToggleSommeil(zone.id)}
-                        sx={{ cursor: 'pointer' }}
-                      />
-                    </TableCell>
-                    
-                    <TableCell>
-                      <Typography variant="body2">
-                        {format(new Date(zone.createdAt), 'dd/MM/yyyy', { locale: fr })}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {format(new Date(zone.createdAt), 'HH:mm', { locale: fr })}
-                      </Typography>
-                    </TableCell>
-                    
-                    <TableCell align="center">
-                      <Box display="flex" gap={1} justifyContent="center">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => navigate(`/zones-interdites/${zone.id}`)}
-                          title="Voir les détails"
-                        >
-                          <ViewIcon />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          color="info"
-                          onClick={() => navigate(`/zones-interdites/${zone.id}/edit`)}
-                          title="Modifier"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDelete(zone.id)}
-                          title="Supprimer"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-        
-        {/* Pagination */}
-        {filteredZones.length > 0 && (
-          <TablePagination
-            component="div"
-            count={filteredZones.length}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            labelRowsPerPage="Lignes par page:"
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} sur ${count}`}
-          />
-        )}
-      </TableContainer>
+      {/* FAB */}
+      <Fab
+        color="primary"
+        aria-label="add"
+        sx={{ position: 'fixed', bottom: 16, right: 16 }}
+        onClick={handleCreate}
+      >
+        <AddIcon />
+      </Fab>
+
+      {/* Dialog de création */}
+      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Nouvelle zone interdite</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Nom de la zone interdite"
+                value={formData.Lib_zi}
+                onChange={(e) => handleFormChange('Lib_zi', e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth required>
+                <InputLabel>Pays</InputLabel>
+                <Select
+                  value={formData.PaysId}
+                  onChange={(e) => handleFormChange('PaysId', e.target.value)}
+                  label="Pays"
+                >
+                  {pays.map((p) => (
+                    <MenuItem key={p._id || p.id} value={p._id || p.id}>
+                      {p.Lib_pays || '—'}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Statut</InputLabel>
+                <Select
+                  value={formData.Sommeil}
+                  onChange={(e) => handleFormChange('Sommeil', e.target.value)}
+                  label="Statut"
+                >
+                  <MenuItem value={false}>Actif</MenuItem>
+                  <MenuItem value={true}>En sommeil</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <GeoJSONInput
+                value={formData.Coordonnee}
+                onChange={(value) => handleFormChange('Coordonnee', value)}
+                geometryType="Polygon"
+                label="Coordonnées (Polygon GeoJSON, optionnel)"
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateDialogOpen(false)}>Annuler</Button>
+          <Button 
+            onClick={handleSubmitCreate} 
+            variant="contained"
+            disabled={!formData.Lib_zi || !formData.PaysId}
+          >
+            Créer
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog de modification */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Modifier la zone interdite</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Nom de la zone interdite"
+                value={formData.Lib_zi}
+                onChange={(e) => handleFormChange('Lib_zi', e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth required>
+                <InputLabel>Pays</InputLabel>
+                <Select
+                  value={formData.PaysId}
+                  onChange={(e) => handleFormChange('PaysId', e.target.value)}
+                  label="Pays"
+                >
+                  {pays.map((p) => (
+                    <MenuItem key={p._id || p.id} value={p._id || p.id}>
+                      {p.Lib_pays || '—'}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Statut</InputLabel>
+                <Select
+                  value={formData.Sommeil}
+                  onChange={(e) => handleFormChange('Sommeil', e.target.value)}
+                  label="Statut"
+                >
+                  <MenuItem value={false}>Actif</MenuItem>
+                  <MenuItem value={true}>En sommeil</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <GeoJSONInput
+                value={formData.Coordonnee}
+                onChange={(value) => handleFormChange('Coordonnee', value)}
+                geometryType="Polygon"
+                label="Coordonnées (Polygon GeoJSON, optionnel)"
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Annuler</Button>
+          <Button 
+            onClick={handleSubmitEdit} 
+            variant="contained"
+            disabled={!formData.Lib_zi || !formData.PaysId}
+          >
+            Modifier
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog de suppression */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="sm">
+        <DialogTitle>Confirmer la suppression</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Êtes-vous sûr de vouloir supprimer "{selectedZone?.Lib_zi}" ?
+          </Typography>
+          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+            Cette action est irréversible.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Annuler</Button>
+          <Button onClick={handleSubmitDelete} color="error" variant="contained">
+            Supprimer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

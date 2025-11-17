@@ -80,11 +80,23 @@ import CreateProfilePage from '@presentation/pages/Profiles/CreateProfilePage.js
 import EditProfilePage from '@presentation/pages/Profiles/EditProfilePage.jsx';
 import ProfileDetailPage from '@presentation/pages/Profiles/ProfileDetailPage.jsx';
 
-// Geographic
-import PaysListPage from '@presentation/pages/Geographic/PaysListPage.jsx';
-import RegionsListPage from '@presentation/pages/Geographic/RegionsListPage.jsx';
-import DepartementsListPage from '@presentation/pages/Geographic/DepartementsListPage.jsx';
-import SousprefsListPage from '@presentation/pages/Geographic/SousprefsListPage.jsx';
+// Administrative (nouvelles pages GeoJSON)
+import SousprefsListPageGeo from '@presentation/pages/Administrative/Souspref/SousprefsListPage.jsx';
+import MenagesListPageGeo from '@presentation/pages/Administrative/Menages/MenagesListPage.jsx';
+import SecteursListPage from '@presentation/pages/Administrative/Secteurs/SecteursListPage.jsx';
+import ZonesAdminListPage from '@presentation/pages/Administrative/Zones/ZonesListPage.jsx';
+import LocalitesListPage from '@presentation/pages/Administrative/Localites/LocalitesListPage.jsx';
+
+// Agricultural (nouvelles pages GeoJSON)
+import ProducteursGeoPage from '@presentation/pages/Agricultural/Producteurs/ProducteursListPage.jsx';
+import ParcellesGeoPage from '@presentation/pages/Agricultural/Parcelles/ParcellesListPage.jsx';
+
+// Geographic (nouvelles pages GeoJSON)
+import PaysGeoPage from '@presentation/pages/Geographic/Pays/PaysListPage.jsx';
+import DistrictsGeoPage from '@presentation/pages/Geographic/Districts/DistrictsListPage.jsx';
+import RegionsGeoPage from '@presentation/pages/Geographic/Regions/RegionsListPage.jsx';
+import DepartementsGeoPage from '@presentation/pages/Geographic/Departements/DepartementsListPage.jsx';
+import VillagesGeoPage from '@presentation/pages/Geographic/Villages/VillagesListPage.jsx';
 
 // Reference
 import NationalitesListPage from '@presentation/pages/Reference/NationalitesListPage.jsx';
@@ -255,18 +267,33 @@ function App() {
             <Route path="volets/:id/edit" element={<EditVoletPage />} />
             
             {/* Données géographiques */}
-            <Route path="pays" element={<PaysListPage />} />
-            <Route path="regions" element={<RegionsListPage />} />
-            <Route path="departements" element={<DepartementsListPage />} />
-            <Route path="sousprefectures" element={<SousprefsListPage />} />
-            <Route path="districts" element={<DistrictsPage />} />
-            <Route path="districts/new" element={<CreateDistrictPage />} />
-            <Route path="districts/:id" element={<DistrictDetailPage />} />
-            <Route path="districts/:id/edit" element={<EditDistrictPage />} />
-            <Route path="villages" element={<VillagesPage />} />
-            <Route path="villages/new" element={<CreateVillagePage />} />
-            <Route path="villages/:id" element={<VillageDetailPage />} />
-            <Route path="villages/:id/edit" element={<EditVillagePage />} />
+            <Route path="pays" element={<PaysGeoPage />} />
+            <Route path="districts" element={<DistrictsGeoPage />} />
+            <Route path="regions" element={<RegionsGeoPage />} />
+            <Route path="departements" element={<DepartementsGeoPage />} />
+            <Route path="sousprefectures" element={<SousprefsListPageGeo />} />
+            <Route path="villages" element={<VillagesGeoPage />} />
+            
+            {/* Module Administratif (GeoJSON) */}
+            <Route path="secteurs" element={<SecteursListPage />} />
+            <Route path="zones" element={<ZonesAdminListPage />} />
+            <Route path="localites" element={<LocalitesListPage />} />
+            <Route path="menages" element={<MenagesListPageGeo />} />
+            
+            {/* Module Agricole (GeoJSON) */}
+            <Route path="producteurs-geojson" element={<ProducteursGeoPage />} />
+            <Route path="parcelles-geojson" element={<ParcellesGeoPage />} />
+            
+            {/* Anciennes routes districts/villages (à conserver temporairement) */}
+            <Route path="districts-old" element={<DistrictsPage />} />
+            <Route path="districts-old/new" element={<CreateDistrictPage />} />
+            <Route path="districts-old/:id" element={<DistrictDetailPage />} />
+            <Route path="districts-old/:id/edit" element={<EditDistrictPage />} />
+            <Route path="villages-old" element={<VillagesPage />} />
+            <Route path="villages-old/new" element={<CreateVillagePage />} />
+            <Route path="villages-old/:id" element={<VillageDetailPage />} />
+            <Route path="villages-old/:id/edit" element={<EditVillagePage />} />
+            
             <Route path="zones-interdites" element={<ZonesInterditesPage />} />
             <Route path="zones-interdites/new" element={<CreateZoneInterditePage />} />
             <Route path="zones-interdites/:id" element={<ZoneInterditeDetailPage />} />

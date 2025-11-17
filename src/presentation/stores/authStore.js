@@ -157,6 +157,7 @@ export const useAuthStore = create(
             error: null
           });
         } else {
+          // Si on ne peut pas récupérer l'utilisateur, le token est invalide
           await storageService.clearTokens();
           set({
             user: null,
@@ -166,6 +167,7 @@ export const useAuthStore = create(
           });
         }
       } catch (error) {
+        console.error('Erreur lors de l\'initialisation de l\'authentification:', error);
         await storageService.clearTokens();
         set({
           user: null,

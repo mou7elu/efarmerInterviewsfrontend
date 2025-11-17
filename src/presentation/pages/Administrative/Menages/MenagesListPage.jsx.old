@@ -1,0 +1,1727 @@
+/**
+ * Ménages List Page
+ * Page de gestion des ménages (CRUD)
+ * 
+ * Conforme au schéma MenageSchema (backend/models/Menage.js):
+ * - PaysId, DistrictId, RegionId, DepartementId, SousprefId, SecteurAdministratifId, 
+ *   ZonedenombreId, LocaliteId, EnqueteurId (tous required, ObjectId refs)
+ * - Cod_menage (required, unique, auto-généré: dept(3)+souspref(2)+zd(4)+agent+ord(2))
+ * - HasanacProducteur (Boolean, default: false)
+ * - NomChefMenage, PrenomChefMenage, ContactChefMenage (String)
+ * - NombreExploitants (Number, default: 0)
+ * - ExploitantIsPresent, RepresentantIsPresent (Boolean, default: false)
+ * - NomRepresentant, PrenomRepresentant, ContactRepresentant (String)
+ * - CoordonneesGPS (String/GeoJSON Point, default: null)
+ * - MilieuResidence (Number: 0-non défini, 1-urbain, 2-semi-urbain, 3-rural, default: 0, required)
+ * - timestamps (createdAt, updatedAt)
+ */
+
+import React, { useEffect, useState } from 'react';
+import {
+  Container,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  IconButton,
+  Button,
+  Box,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
+  Card,
+  CardContent,
+  Fab,
+  Tooltip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
+  Switch,
+  FormControlLabel,
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Search as SearchIcon,
+  Home as HomeIcon,
+  Person as PersonIcon,
+  LocationOn as LocationIcon,
+} from '@mui/icons-material';
+
+import LoadingSpinner from '@presentation/components/Common/LoadingSpinner.jsx';
+import GeoJSONInput from '@presentation/components/Common/GeoJSONInput.jsx';
+import { 
+  menagesAPI, 
+  localitesAPI, 
+  usersAPI, 
+  paysAPI,
+  districtAPI,
+  regionsAPI,
+  departementsAPI,
+  sousprefsAPI,
+  secteursAdministratifsAPI,
+  zonesdenombreAPI,
+  villagesAPI,
+  handleApiError 
+} from '../../../../services/api.js';
+import { useAuthStore } from '@presentation/stores/authStore.js';
+
+const MenagesListPage = () => {
+  // Auth store - check if authenticated before making API calls
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
+  
+  // États locaux
+  const [menages, setMenages] = useState([]);
+  const [filteredMenages, setFilteredMenages] = useState([]);
+  const [localites, setLocalites] = useState([]);
+  const [enqueteurs, setEnqueteurs] = useState([]);
+  
+  // Données complètes chargées depuis l'API
+  const [pays, setPays] = useState([]);
+  const [allDistricts, setAllDistricts] = useState([]);
+  const [allRegions, setAllRegions] = useState([]);
+  const [allDepartements, setAllDepartements] = useState([]);
+  const [allSousprefs, setAllSousprefs] = useState([]);
+  const [allSecteursAdministratifs, setAllSecteursAdministratifs] = useState([]);
+  const [allZonedenombres, setAllZonedenombres] = useState([]);
+  const [allVillages, setAllVillages] = useState([]);
+  const [allLocalites, setAllLocalites] = useState([]);
+  
+  // Listes filtrées selon la sélection en cascade
+  const [filteredDistricts, setFilteredDistricts] = useState([]);
+  const [filteredRegions, setFilteredRegions] = useState([]);
+  const [filteredDepartements, setFilteredDepartements] = useState([]);
+  const [filteredSousprefs, setFilteredSousprefs] = useState([]);
+  const [filteredSecteursAdministratifs, setFilteredSecteursAdministratifs] = useState([]);
+  const [filteredZonedenombres, setFilteredZonedenombres] = useState([]);
+  const [filteredVillages, setFilteredVillages] = useState([]);
+  const [filteredLocalites, setFilteredLocalites] = useState([]);
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [localiteFilter, setLocaliteFilter] = useState('');
+  const [enqueteurFilter, setEnqueteurFilter] = useState('');
+  const [paysFilter, setPaysFilter] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
+  const [regionFilter, setRegionFilter] = useState('');
+  const [departementFilter, setDepartementFilter] = useState('');
+  const [sousprefFilter, setSousprefFilter] = useState('');
+  const [secteurAdminFilter, setSecteurAdminFilter] = useState('');
+  const [zonedenombreFilter, setZonedenombreFilter] = useState('');
+  const [villageFilter, setVillageFilter] = useState('');
+  
+  // États pour les modals
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedMenage, setSelectedMenage] = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  
+  // États pour le formulaire - Conforme au schéma MenageSchema
+  const [formData, setFormData] = useState({
+    // Champs administratifs (tous required dans le schéma)
+    PaysId: '',
+    DistrictId: '',
+    RegionId: '',
+    DepartementId: '',
+    SousprefId: '',
+    SecteurAdministratifId: '',
+    ZonedenombreId: '',
+    VillageId: '',
+    LocaliteId: '',
+    EnqueteurId: '',
+    
+    // Code ménage (required, unique, auto-généré)
+    Cod_menage: '',
+    
+    // Producteur anacarde
+    HasanacProducteur: false,
+    
+    // Informations chef de ménage
+    NomChefMenage: '',
+    PrenomChefMenage: '',
+    ContactChefMenage: '',
+    
+    // Exploitants
+    NombreExploitants: 0,
+    ExploitantIsPresent: false,
+    
+    // Représentant
+    RepresentantIsPresent: false,
+    NomRepresentant: '',
+    PrenomRepresentant: '',
+    ContactRepresentant: '',
+    
+    // Coordonnées GPS (geojson point)
+    CoordonneesGPS: null,
+    
+    // Milieu de résidence (required, default: 0)
+    MilieuResidence: 0, // 3-rural, 1-urbain, 2-semi-urbain
+  });
+
+  useEffect(() => {
+    // Only load data if authenticated - wait for auth to complete
+    if (!authLoading && isAuthenticated) {
+      loadData();
+      loadLocalites();
+      loadEnqueteurs();
+      loadPays();
+      loadDistricts();
+      loadRegions();
+      loadDepartements();
+      loadSousprefs();
+      loadSecteursAdministratifs();
+      loadZonedenombres();
+      loadVillages();
+    } else if (!authLoading && !isAuthenticated) {
+      // Not authenticated - ProtectedRoute will redirect
+      setLoading(false);
+    }
+  }, [isAuthenticated, authLoading]);
+
+  // Filtrage en cascade : Pays -> Districts
+  useEffect(() => {
+    if (formData.PaysId) {
+      const filtered = allDistricts.filter(d => d.PaysId === formData.PaysId || (typeof d.PaysId === 'object' && d.PaysId._id === formData.PaysId));
+      setFilteredDistricts(filtered);
+      
+      // Réinitialiser les sélections suivantes si le district actuel n'est plus valide
+      if (formData.DistrictId && !filtered.find(d => d._id === formData.DistrictId)) {
+        handleFormChange('DistrictId', '');
+      }
+    } else {
+      setFilteredDistricts(allDistricts);
+    }
+  }, [formData.PaysId, allDistricts]);
+
+  // Filtrage en cascade : District -> Régions
+  useEffect(() => {
+    if (formData.DistrictId) {
+      const filtered = allRegions.filter(r => r.DistrictId === formData.DistrictId || (typeof r.DistrictId === 'object' && r.DistrictId._id === formData.DistrictId));
+      setFilteredRegions(filtered);
+      
+      if (formData.RegionId && !filtered.find(r => r._id === formData.RegionId)) {
+        handleFormChange('RegionId', '');
+      }
+    } else {
+      setFilteredRegions(allRegions);
+    }
+  }, [formData.DistrictId, allRegions]);
+
+  // Filtrage en cascade : Région -> Départements
+  useEffect(() => {
+    if (formData.RegionId) {
+      const filtered = allDepartements.filter(d => d.RegionId === formData.RegionId || (typeof d.RegionId === 'object' && d.RegionId._id === formData.RegionId));
+      setFilteredDepartements(filtered);
+      
+      if (formData.DepartementId && !filtered.find(d => d._id === formData.DepartementId)) {
+        handleFormChange('DepartementId', '');
+      }
+    } else {
+      setFilteredDepartements(allDepartements);
+    }
+  }, [formData.RegionId, allDepartements]);
+
+  // Filtrage en cascade : Département -> Sous-préfectures
+  useEffect(() => {
+    if (formData.DepartementId) {
+      const filtered = allSousprefs.filter(s => s.DepartementId === formData.DepartementId || (typeof s.DepartementId === 'object' && s.DepartementId._id === formData.DepartementId));
+      setFilteredSousprefs(filtered);
+      
+      if (formData.SousprefId && !filtered.find(s => s._id === formData.SousprefId)) {
+        handleFormChange('SousprefId', '');
+      }
+    } else {
+      setFilteredSousprefs(allSousprefs);
+    }
+  }, [formData.DepartementId, allSousprefs]);
+
+  // Filtrage en cascade : Sous-préfecture -> Secteurs administratifs
+  useEffect(() => {
+    if (formData.SousprefId) {
+      const filtered = allSecteursAdministratifs.filter(s => s.SousprefId === formData.SousprefId || (typeof s.SousprefId === 'object' && s.SousprefId._id === formData.SousprefId));
+      setFilteredSecteursAdministratifs(filtered);
+      
+      if (formData.SecteurAdministratifId && !filtered.find(s => s._id === formData.SecteurAdministratifId)) {
+        handleFormChange('SecteurAdministratifId', '');
+      }
+    } else {
+      setFilteredSecteursAdministratifs(allSecteursAdministratifs);
+    }
+  }, [formData.SousprefId, allSecteursAdministratifs]);
+
+  // Filtrage en cascade : Secteur administratif -> Zones de dénombrement
+  useEffect(() => {
+    if (formData.SecteurAdministratifId) {
+      const filtered = allZonedenombres.filter(z => z.SecteurAdministratifId === formData.SecteurAdministratifId || (typeof z.SecteurAdministratifId === 'object' && z.SecteurAdministratifId._id === formData.SecteurAdministratifId));
+      setFilteredZonedenombres(filtered);
+      
+      if (formData.ZonedenombreId && !filtered.find(z => z._id === formData.ZonedenombreId)) {
+        handleFormChange('ZonedenombreId', '');
+      }
+    } else {
+      setFilteredZonedenombres(allZonedenombres);
+    }
+  }, [formData.SecteurAdministratifId, allZonedenombres]);
+
+  // Filtrage en cascade : Zone de dénombrement -> Villages
+  useEffect(() => {
+    if (formData.ZonedenombreId) {
+      const filtered = allVillages.filter(v => 
+        v.ZonedenombreId === formData.ZonedenombreId || 
+        (typeof v.ZonedenombreId === 'object' && v.ZonedenombreId._id === formData.ZonedenombreId)
+      );
+      setFilteredVillages(filtered);
+      
+      if (formData.VillageId && !filtered.find(v => v._id === formData.VillageId)) {
+        handleFormChange('VillageId', '');
+      }
+    } else {
+      setFilteredVillages(allVillages);
+    }
+  }, [formData.ZonedenombreId, allVillages]);
+
+  // Filtrage en cascade : Village -> Localités
+  useEffect(() => {
+    if (formData.VillageId) {
+      const filtered = allLocalites.filter(l => 
+        l.VillageId === formData.VillageId || 
+        (typeof l.VillageId === 'object' && l.VillageId._id === formData.VillageId)
+      );
+      setFilteredLocalites(filtered);
+      
+      if (formData.LocaliteId && !filtered.find(l => l._id === formData.LocaliteId)) {
+        handleFormChange('LocaliteId', '');
+      }
+    } else {
+      setFilteredLocalites(allLocalites);
+    }
+  }, [formData.VillageId, allLocalites]);
+
+  // Appliquer les filtres
+  useEffect(() => {
+    if (!searchTerm && !localiteFilter && !enqueteurFilter && !paysFilter && !districtFilter && !regionFilter && !departementFilter && !sousprefFilter && !secteurAdminFilter && !zonedenombreFilter && !villageFilter) {
+      setFilteredMenages(menages);
+    } else {
+      const filtered = menages.filter(m => {
+        const codMenage = m.Cod_menage || '';
+        const nomChef = m.NomChefMenage || '';
+        const prenomChef = m.PrenomChefMenage || '';
+        
+        const localiteMatch = !localiteFilter || m.LocaliteId === localiteFilter;
+        const enqueteurMatch = !enqueteurFilter || m.EnqueteurId === enqueteurFilter;
+        const paysMatch = !paysFilter || m.PaysId === paysFilter;
+        const districtMatch = !districtFilter || m.DistrictId === districtFilter;
+        const regionMatch = !regionFilter || m.RegionId === regionFilter;
+        const departementMatch = !departementFilter || m.DepartementId === departementFilter;
+        const sousprefMatch = !sousprefFilter || m.SousprefId === sousprefFilter;
+        const secteurAdminMatch = !secteurAdminFilter || m.SecteurAdministratifId === secteurAdminFilter;
+        const zonedenombreMatch = !zonedenombreFilter || m.ZonedenombreId === zonedenombreFilter;
+        const villageMatch = !villageFilter || m.VillageId === villageFilter;
+        const searchMatch = !searchTerm || 
+          codMenage.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          nomChef.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          prenomChef.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        return searchMatch && localiteMatch && enqueteurMatch && paysMatch && districtMatch && regionMatch && departementMatch && sousprefMatch && secteurAdminMatch && zonedenombreMatch && villageMatch;
+      });
+      setFilteredMenages(filtered);
+    }
+    setPage(0);
+  }, [menages, searchTerm, localiteFilter, enqueteurFilter, paysFilter, districtFilter, regionFilter, departementFilter, sousprefFilter, secteurAdminFilter, zonedenombreFilter, villageFilter]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await menagesAPI.getAll();
+      const data = response.data || response;
+      const menagesData = data.items || data || [];
+      
+      setMenages(menagesData);
+      setFilteredMenages(menagesData);
+    } catch (error) {
+      console.error('Erreur lors du chargement:', error);
+      setError(handleApiError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadVillages = async () => {
+    try {
+      const response = await villagesAPI.getAll();
+      const data = response.data || response;
+      const villagesData = data.items || data || [];
+      setAllVillages(villagesData);
+      setFilteredVillages(villagesData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des villages:', error);
+    }
+  };
+
+  const loadLocalites = async () => {
+    try {
+      const response = await localitesAPI.getAll();
+      const data = response.data || response;
+      const localitesData = data.items || data || [];
+      setAllLocalites(localitesData);
+      setFilteredLocalites(localitesData);
+      setLocalites(localitesData); // Pour compatibilité avec le code existant
+    } catch (error) {
+      console.error('Erreur lors du chargement des localités:', error);
+    }
+  };
+
+  const loadEnqueteurs = async () => {
+    try {
+      const response = await usersAPI.getAll();
+      const data = response.data || response;
+      // Handle both formats: {data: [...]} and {items: [...]} and direct array
+      const usersData = data.data || data.items || data || [];
+      // Filtrer uniquement les enquêteurs si possible
+      console.log('Fetched enqueteurs:', usersData);
+      setEnqueteurs(usersData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des enquêteurs:', error);
+      // Don't block the page if users can't be loaded
+      setEnqueteurs([]);
+    }
+  };
+
+  const loadPays = async () => {
+    try {
+      const response = await paysAPI.getAll();
+      const data = response.data || response;
+      const paysData = data.items || data || [];
+      setPays(paysData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des pays:', error);
+    }
+  };
+
+  const loadDistricts = async () => {
+    try {
+      const response = await districtAPI.getAll();
+      const data = response.data || response;
+      const districtsData = data.items || data || [];
+      setAllDistricts(districtsData);
+      setFilteredDistricts(districtsData); // Initialement, tout est disponible
+    } catch (error) {
+      console.error('Erreur lors du chargement des districts:', error);
+    }
+  };
+
+  const loadRegions = async () => {
+    try {
+      const response = await regionsAPI.getAll();
+      const data = response.data || response;
+      const regionsData = data.items || data || [];
+      setAllRegions(regionsData);
+      setFilteredRegions(regionsData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des régions:', error);
+    }
+  };
+
+  const loadDepartements = async () => {
+    try {
+      const response = await departementsAPI.getAll();
+      const data = response.data || response;
+      const departementsData = data.items || data || [];
+      setAllDepartements(departementsData);
+      setFilteredDepartements(departementsData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des départements:', error);
+    }
+  };
+
+  const loadSousprefs = async () => {
+    try {
+      const response = await sousprefsAPI.getAll();
+      const data = response.data || response;
+      const sousprefsData = data.items || data || [];
+      setAllSousprefs(sousprefsData);
+      setFilteredSousprefs(sousprefsData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des sous-préfectures:', error);
+    }
+  };
+
+  const loadSecteursAdministratifs = async () => {
+    try {
+      const response = await secteursAdministratifsAPI.getAll();
+      const data = response.data || response;
+      const secteursData = data.items || data || [];
+      setAllSecteursAdministratifs(secteursData);
+      setFilteredSecteursAdministratifs(secteursData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des secteurs administratifs:', error);
+    }
+  };
+
+  const loadZonedenombres = async () => {
+    try {
+      const response = await zonesdenombreAPI.getAll();
+      const data = response.data || response;
+      const zonedenombresData = data.items || data || [];
+      setAllZonedenombres(zonedenombresData);
+      setFilteredZonedenombres(zonedenombresData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des zones de dénombrement:', error);
+    }
+  };
+
+  const handlePageChange = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleRowsPerPageChange = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleFormChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      // Champs administratifs (tous required)
+      PaysId: '',
+      DistrictId: '',
+      RegionId: '',
+      DepartementId: '',
+      SousprefId: '',
+      SecteurAdministratifId: '',
+      ZonedenombreId: '',
+      LocaliteId: '',
+      EnqueteurId: '',
+      
+      // Code ménage (auto-généré)
+      Cod_menage: '',
+      
+      // Producteur anacarde
+      HasanacProducteur: false,
+      
+      // Informations chef de ménage
+      NomChefMenage: '',
+      PrenomChefMenage: '',
+      ContactChefMenage: '',
+      
+      // Exploitants
+      NombreExploitants: 0,
+      ExploitantIsPresent: false,
+      
+      // Représentant
+      RepresentantIsPresent: false,
+      NomRepresentant: '',
+      PrenomRepresentant: '',
+      ContactRepresentant: '',
+      
+      // Coordonnées GPS
+      CoordonneesGPS: null,
+      
+      // Milieu de résidence (default: 0)
+      MilieuResidence: 0,
+    });
+  };
+
+  // Fonction pour obtenir les coordonnées GPS actuelles
+  const getCurrentLocation = () => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('La géolocalisation n\'est pas supportée par votre navigateur'));
+        return;
+      }
+
+      setGpsLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = {
+            type: 'Point',
+            coordinates: [position.coords.longitude, position.coords.latitude]
+          };
+          const coordsString = JSON.stringify(coords);
+          setGpsLoading(false);
+          resolve(coordsString);
+        },
+        (error) => {
+          setGpsLoading(false);
+          let errorMessage = 'Impossible d\'obtenir la position';
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Permission de géolocalisation refusée';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Position non disponible';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'Délai d\'attente dépassé';
+              break;
+          }
+          reject(new Error(errorMessage));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    });
+  };
+
+  const handleCreate = async () => {
+    console.log('User from authStore:', user);
+    
+    // Préparer les valeurs initiales
+    let initialEnqueteurId = '';
+    let initialGPS = '';
+    
+    // Pré-remplir l'enquêteur avec l'utilisateur connecté
+    if (user) {
+      const userId = user.id || user._id;
+      console.log('UserId extracted:', userId);
+      console.log('User properties:', {
+        id: user.id,
+        _id: user._id,
+        email: user.email,
+        Pren_ut: user.Pren_ut,
+        Nom_ut: user.Nom_ut,
+        firstName: user.firstName,
+        lastName: user.lastName
+      });
+      
+      if (userId) {
+        initialEnqueteurId = userId;
+        console.log('EnqueteurId set to:', userId);
+      } else {
+        console.warn('No valid userId found in user object');
+      }
+    } else {
+      console.warn('No user in authStore');
+    }
+    
+    // Obtenir les coordonnées GPS
+    try {
+      initialGPS = await getCurrentLocation();
+    } catch (error) {
+      console.error('Erreur GPS:', error);
+      setError(error.message);
+    }
+    
+    // Réinitialiser le formulaire avec les valeurs pré-remplies
+    setFormData({
+      // Champs administratifs (tous required)
+      PaysId: '',
+      DistrictId: '',
+      RegionId: '',
+      DepartementId: '',
+      SousprefId: '',
+      SecteurAdministratifId: '',
+      ZonedenombreId: '',
+      LocaliteId: '',
+      EnqueteurId: initialEnqueteurId,
+      
+      // Code ménage (auto-généré)
+      Cod_menage: '',
+      
+      // Producteur anacarde
+      HasanacProducteur: false,
+      
+      // Informations chef de ménage
+      NomChefMenage: '',
+      PrenomChefMenage: '',
+      ContactChefMenage: '',
+      
+      // Exploitants
+      NombreExploitants: 0,
+      ExploitantIsPresent: false,
+      
+      // Représentant
+      RepresentantIsPresent: false,
+      NomRepresentant: '',
+      PrenomRepresentant: '',
+      ContactRepresentant: '',
+      
+      // Coordonnées GPS
+      CoordonneesGPS: initialGPS,
+      
+      // Milieu de résidence
+      MilieuResidence: 0,
+      
+      VillageId: ''
+    });
+    
+    setCreateDialogOpen(true);
+  };
+
+  const handleEdit = (menage) => {
+    setSelectedMenage(menage);
+    setFormData({
+      // Champs administratifs - extraire l'ID si c'est un objet peuplé
+      PaysId: typeof menage.PaysId === 'object' ? menage.PaysId._id : menage.PaysId,
+      DistrictId: typeof menage.DistrictId === 'object' ? menage.DistrictId._id : menage.DistrictId,
+      RegionId: typeof menage.RegionId === 'object' ? menage.RegionId._id : menage.RegionId,
+      DepartementId: typeof menage.DepartementId === 'object' ? menage.DepartementId._id : menage.DepartementId,
+      SousprefId: typeof menage.SousprefId === 'object' ? menage.SousprefId._id : menage.SousprefId,
+      SecteurAdministratifId: typeof menage.SecteurAdministratifId === 'object' ? menage.SecteurAdministratifId._id : menage.SecteurAdministratifId,
+      ZonedenombreId: typeof menage.ZonedenombreId === 'object' ? menage.ZonedenombreId._id : menage.ZonedenombreId,
+      LocaliteId: typeof menage.LocaliteId === 'object' ? menage.LocaliteId._id : menage.LocaliteId,
+      EnqueteurId: typeof menage.EnqueteurId === 'object' ? menage.EnqueteurId._id : menage.EnqueteurId,
+      
+      // Code ménage (unique, non modifiable)
+      Cod_menage: menage.Cod_menage || '',
+      
+      // Producteur anacarde
+      HasanacProducteur: menage.HasanacProducteur || false,
+      
+      // Informations chef de ménage
+      NomChefMenage: menage.NomChefMenage || '',
+      PrenomChefMenage: menage.PrenomChefMenage || '',
+      ContactChefMenage: menage.ContactChefMenage || '',
+      
+      // Exploitants
+      NombreExploitants: menage.NombreExploitants || 0,
+      ExploitantIsPresent: menage.ExploitantIsPresent || false,
+      
+      // Représentant
+      RepresentantIsPresent: menage.RepresentantIsPresent || false,
+      NomRepresentant: menage.NomRepresentant || '',
+      PrenomRepresentant: menage.PrenomRepresentant || '',
+      ContactRepresentant: menage.ContactRepresentant || '',
+      
+      // Coordonnées GPS
+      CoordonneesGPS: menage.CoordonneesGPS || null,
+      
+      // Milieu de résidence
+      MilieuResidence: menage.MilieuResidence || 0,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleDelete = (menage) => {
+    setSelectedMenage(menage);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleSubmitCreate = async () => {
+    try {
+      // Valider les champs requis
+      const requiredFields = [
+        'PaysId', 'DistrictId', 'RegionId', 'DepartementId', 
+        'SousprefId', 'SecteurAdministratifId', 'ZonedenombreId',
+        'LocaliteId', 'VillageId', 'EnqueteurId'
+      ];
+      
+      const missingFields = requiredFields.filter(field => !formData[field]);
+      
+      if (missingFields.length > 0) {
+        setError(`Champs requis manquants: ${missingFields.join(', ')}`);
+        return;
+      }
+      
+      // Préparer les données à envoyer (supprimer les chaînes vides et Cod_menage)
+      const cleanedData = Object.fromEntries(
+        Object.entries(formData).filter(([key, value]) => {
+          // Ne pas envoyer Cod_menage (auto-généré) ni les chaînes vides
+          if (key === 'Cod_menage') return false;
+          return value !== '';
+        })
+      );
+      
+      console.log('Données envoyées:', cleanedData);
+      
+      await menagesAPI.create(cleanedData);
+      setCreateDialogOpen(false);
+      resetForm();
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de la création:', error);
+      setError(handleApiError(error));
+    }
+  };
+
+  const handleSubmitEdit = async () => {
+    try {
+      await menagesAPI.update(selectedMenage._id, formData);
+      setEditDialogOpen(false);
+      setSelectedMenage(null);
+      resetForm();
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de la modification:', error);
+      setError(handleApiError(error));
+    }
+  };
+
+  const handleSubmitDelete = async () => {
+    try {
+      await menagesAPI.delete(selectedMenage._id);
+      setDeleteDialogOpen(false);
+      setSelectedMenage(null);
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      setError(handleApiError(error));
+    }
+  };
+
+  const getLocaliteName = (locId) => {
+    const loc = localites.find(l => l._id === locId);
+    return loc ? (loc.Lib_localite || '—') : '—';
+  };
+
+  const getVillageName = (villageId) => {
+    const vill = allVillages.find(v => v._id === villageId);
+    return vill ? (vill.Lib_village || '—') : '—';
+  };
+
+  const getEnqueteurName = (enqId) => {
+    const enq = enqueteurs.find(e => e.id === enqId || e._id === enqId);
+    if (!enq) return '—';
+    
+    // Utiliser Pren_ut et Nom_ut, puis email comme fallback
+    const fullName = `${enq.Pren_ut || ''} ${enq.Nom_ut || ''}`.trim();
+    return fullName || enq.email || '—';
+  };
+
+  const getPaysName = (paysId) => {
+    const p = pays.find(p => p._id === paysId);
+    return p ? (p.Lib_pays || '—') : '—';
+  };
+
+  const getDistrictName = (districtId) => {
+    const d = allDistricts.find(d => d._id === districtId);
+    return d ? (d.Lib_district || '—') : '—';
+  };
+
+  const getRegionName = (regionId) => {
+    const r = allRegions.find(r => r._id === regionId);
+    return r ? (r.Lib_region || '—') : '—';
+  };
+
+  const getDepartementName = (departementId) => {
+    const d = allDepartements.find(d => d._id === departementId);
+    return d ? (d.Lib_Departement || '—') : '—';
+  };
+
+  const getSousprefName = (sousprefId) => {
+    const s = allSousprefs.find(s => s._id === sousprefId);
+    return s ? (s.Lib_Souspref || '—') : '—';
+  };
+
+  const getSecteurAdministratifName = (secteurId) => {
+    const s = allSecteursAdministratifs.find(s => s._id === secteurId);
+    return s ? (s.Lib_SecteurAdministratif || '—') : '—';
+  };
+
+  const getZonedenombreName = (zoneId) => {
+    const z = allZonedenombres.find(z => z._id === zoneId);
+    return z ? (z.Lib_ZD || '—') : '—';
+  };
+
+  const getMilieuResidenceLabel = (milieu) => {
+    switch(milieu) {
+      case 1: return 'Urbain';
+      case 2: return 'Semi-urbain';
+      case 3: return 'Rural';
+      case 0: return 'Non défini';
+      default: return '—';
+    }
+  };
+
+  // Show loading while auth initializes
+  if (authLoading) {
+    return <LoadingSpinner size={60} message="Vérification de l'authentification..." />;
+  }
+
+  // Show loading while data loads
+  if (loading) {
+    return <LoadingSpinner size={60} message="Chargement des ménages..." />;
+  }
+
+  return (
+    <Container maxWidth="xl">
+      {/* En-tête */}
+      <Box mb={4}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h4" component="h1">
+            Ménages
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleCreate}
+          >
+            Nouveau ménage
+          </Button>
+        </Box>
+        
+        {/* Statistiques */}
+        <Grid container spacing={2} mb={3}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" color="primary">
+                  {menages.length}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Total ménages
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" color="success.main">
+                  {menages.filter(m => m.HasanacProducteur).length}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Ménages producteurs d'anacarde
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" color="info.main">
+                  {menages.reduce((sum, m) => sum + (m.NombreExploitants || 0), 0)}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Total exploitants
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" color="warning.main">
+                  {menages.filter(m => m.MilieuResidence === 3).length}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Ménages ruraux
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* Barre de recherche et filtres */}
+      <Box mb={3}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              placeholder="Rechercher par code, nom ou prénom du chef..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par pays</InputLabel>
+              <Select
+                value={paysFilter}
+                onChange={(e) => setPaysFilter(e.target.value)}
+                label="Filtrer par pays"
+              >
+                <MenuItem value="">Tous les pays</MenuItem>
+                {pays.map((p) => (
+                  <MenuItem key={p._id} value={p._id}>
+                    {p.Lib_pays || '—'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par district</InputLabel>
+              <Select
+                value={districtFilter}
+                onChange={(e) => setDistrictFilter(e.target.value)}
+                label="Filtrer par district"
+              >
+                <MenuItem value="">Tous les districts</MenuItem>
+                {allDistricts.map((d) => (
+                  <MenuItem key={d._id} value={d._id}>
+                    {d.Lib_district || '—'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par région</InputLabel>
+              <Select
+                value={regionFilter}
+                onChange={(e) => setRegionFilter(e.target.value)}
+                label="Filtrer par région"
+              >
+                <MenuItem value="">Toutes les régions</MenuItem>
+                {allRegions.map((r) => (
+                  <MenuItem key={r._id} value={r._id}>
+                    {r.Lib_region || '—'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par département</InputLabel>
+              <Select
+                value={departementFilter}
+                onChange={(e) => setDepartementFilter(e.target.value)}
+                label="Filtrer par département"
+              >
+                <MenuItem value="">Tous les départements</MenuItem>
+                {allDepartements.map((d) => (
+                  <MenuItem key={d._id} value={d._id}>
+                    {d.Lib_Departement || '—'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par sous-préfecture</InputLabel>
+              <Select
+                value={sousprefFilter}
+                onChange={(e) => setSousprefFilter(e.target.value)}
+                label="Filtrer par sous-préfecture"
+              >
+                <MenuItem value="">Toutes les sous-préfectures</MenuItem>
+                {allSousprefs.map((s) => (
+                  <MenuItem key={s._id} value={s._id}>
+                    {s.Lib_Souspref || '—'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par secteur administratif</InputLabel>
+              <Select
+                value={secteurAdminFilter}
+                onChange={(e) => setSecteurAdminFilter(e.target.value)}
+                label="Filtrer par secteur administratif"
+              >
+                <MenuItem value="">Tous les secteurs administratifs</MenuItem>
+                {allSecteursAdministratifs.map((s) => (
+                  <MenuItem key={s._id} value={s._id}>
+                    {s.Lib_SecteurAdministratif || '—'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par zone de dénombrement</InputLabel>
+              <Select
+                value={zonedenombreFilter}
+                onChange={(e) => setZonedenombreFilter(e.target.value)}
+                label="Filtrer par zone de dénombrement"
+              >
+                <MenuItem value="">Toutes les zones de dénombrement</MenuItem>
+                {allZonedenombres.map((z) => (
+                  <MenuItem key={z._id} value={z._id}>
+                    {z.Lib_ZD || '—'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par village</InputLabel>
+              <Select
+                value={villageFilter}
+                onChange={(e) => setVillageFilter(e.target.value)}
+                label="Filtrer par village"
+              >
+                <MenuItem value="">Tous les villages</MenuItem>
+                {allVillages.map((v) => (
+                  <MenuItem key={v._id} value={v._id}>
+                    {v.Lib_village || '—'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par localité</InputLabel>
+              <Select
+                value={localiteFilter}
+                onChange={(e) => setLocaliteFilter(e.target.value)}
+                label="Filtrer par localité"
+              >
+                <MenuItem value="">Toutes les localités</MenuItem>
+                {localites.map((l) => (
+                  <MenuItem key={l._id} value={l._id}>
+                    {l.Lib_localite || '—'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filtrer par enquêteur</InputLabel>
+              <Select
+                value={enqueteurFilter}
+                onChange={(e) => setEnqueteurFilter(e.target.value)}
+                label="Filtrer par enquêteur"
+              >
+                <MenuItem value="">Tous les enquêteurs</MenuItem>
+                {enqueteurs.map((e) => {
+                  const fullName = `${e.Pren_ut || ''} ${e.Nom_ut || ''}`.trim();
+                  const displayName = fullName || e.email || '—';
+                  return (
+                    <MenuItem key={e.id || e._id} value={e.id || e._id}>
+                      {displayName}
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* Messages d'erreur */}
+      {error && (
+        <Box mb={2}>
+          <Typography variant="body1" color="error">
+            Erreur : {error}
+          </Typography>
+        </Box>
+      )}
+
+      {/* Tableau */}
+      <Paper>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Code Ménage</TableCell>
+                <TableCell>Chef de ménage</TableCell>
+                <TableCell>Contact</TableCell>
+                <TableCell>Exploitants</TableCell>
+                <TableCell>Localité</TableCell>
+                <TableCell>Enquêteur</TableCell>
+                <TableCell>Anacarde</TableCell>
+                <TableCell>Milieu</TableCell>
+                <TableCell align="center">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredMenages.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} align="center">
+                    <Typography variant="body2" color="textSecondary" sx={{ py: 4 }}>
+                      Aucun ménage trouvé
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredMenages
+                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                  .map((menage) => (
+                    <TableRow key={menage._id} hover>
+                      <TableCell>
+                        <Box display="flex" alignItems="center">
+                          <HomeIcon sx={{ mr: 1, color: 'primary.main' }} />
+                          <Typography variant="body1" fontWeight="medium">
+                            {menage.Cod_menage || '—'}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box display="flex" alignItems="center">
+                          <PersonIcon sx={{ mr: 0.5, fontSize: 16, color: 'text.secondary' }} />
+                          {`${menage.NomChefMenage || ''} ${menage.PrenomChefMenage || ''}`.trim() || '—'}
+                        </Box>
+                      </TableCell>
+                      <TableCell>{menage.ContactChefMenage || '—'}</TableCell>
+                      <TableCell>
+                        <Chip label={menage.NombreExploitants || 0} size="small" color="primary" />
+                      </TableCell>
+                      <TableCell>
+                        <Box display="flex" alignItems="center">
+                          <LocationIcon sx={{ mr: 0.5, fontSize: 16, color: 'text.secondary' }} />
+                          {getLocaliteName(menage.LocaliteId)}
+                        </Box>
+                      </TableCell>
+                      <TableCell>{getEnqueteurName(menage.EnqueteurId)}</TableCell>
+                      <TableCell>
+                        {menage.HasanacProducteur ? (
+                          <Chip label="Oui" size="small" color="success" />
+                        ) : (
+                          <Chip label="Non" size="small" variant="outlined" />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={getMilieuResidenceLabel(menage.MilieuResidence)} 
+                          size="small" 
+                          color={menage.MilieuResidence === 1 ? "info" : menage.MilieuResidence === 2 ? "warning" : "default"}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Modifier">
+                          <IconButton size="small" onClick={() => handleEdit(menage)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Supprimer">
+                          <IconButton size="small" color="error" onClick={() => handleDelete(menage)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25, 50, 100]}
+          component="div"
+          count={filteredMenages.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          labelRowsPerPage="Lignes par page:"
+        />
+      </Paper>
+
+      {/* FAB */}
+      <Fab
+        color="primary"
+        aria-label="add"
+        sx={{ position: 'fixed', bottom: 16, right: 16 }}
+        onClick={handleCreate}
+      >
+        <AddIcon />
+      </Fab>
+
+      {/* Dialog de création/modification - Formulaire commun */}
+      {[
+        { open: createDialogOpen, setOpen: setCreateDialogOpen, title: 'Nouveau ménage', onSubmit: handleSubmitCreate },
+        { open: editDialogOpen, setOpen: setEditDialogOpen, title: 'Modifier le ménage', onSubmit: handleSubmitEdit }
+      ].map(({ open, setOpen, title, onSubmit }, index) => (
+        <Dialog key={index} open={open} onClose={() => setOpen(false)} maxWidth="lg" fullWidth>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogContent>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              {/* Code ménage (auto-généré si création) */}
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Code ménage"
+                  value={formData.Cod_menage}
+                  onChange={(e) => handleFormChange('Cod_menage', e.target.value)}
+                  disabled={index === 0}
+                  helperText={index === 0 ? "Auto-généré: Code dept(3) + souspref(2) + zd(4) + ID Agent + N° ORD(2)" : ""}
+                />
+              </Grid>
+              
+              {/* Milieu de résidence */}
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>Milieu de résidence</InputLabel>
+                  <Select
+                    value={formData.MilieuResidence}
+                    onChange={(e) => handleFormChange('MilieuResidence', e.target.value)}
+                    label="Milieu de résidence"
+                  >
+                    <MenuItem value={0}>Non défini</MenuItem>
+                    <MenuItem value={1}>Urbain</MenuItem>
+                    <MenuItem value={2}>Semi-urbain</MenuItem>
+                    <MenuItem value={3}>Rural</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Informations administratives */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="primary" sx={{ mt: 1, mb: 1 }}>
+                  Localisation administrative
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth required>
+                  <InputLabel>Pays</InputLabel>
+                  <Select
+                    value={formData.PaysId || ''}
+                    onChange={(e) => handleFormChange('PaysId', e.target.value)}
+                    label="Pays"
+                    displayEmpty
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner un pays</em>
+                    </MenuItem>
+                    {pays.map((p) => (
+                      <MenuItem key={p.id} value={p.id}>
+                        {p.Lib_pays || '—'}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth required>
+                  <InputLabel>District</InputLabel>
+                  <Select
+                    value={formData.DistrictId || ''}
+                    onChange={(e) => handleFormChange('DistrictId', e.target.value)}
+                    label="District"
+                    disabled={!formData.PaysId}
+                    displayEmpty
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner un district</em>
+                    </MenuItem>
+                    {filteredDistricts.map((d) => (
+                      <MenuItem key={d.id} value={d.id}>
+                        {d.Lib_district || '—'}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth required>
+                  <InputLabel>Région</InputLabel>
+                  <Select
+                    value={formData.RegionId || ''}
+                    onChange={(e) => handleFormChange('RegionId', e.target.value)}
+                    label="Région"
+                    disabled={!formData.DistrictId}
+                    displayEmpty
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner une région</em>
+                    </MenuItem>
+                    {filteredRegions.map((r) => (
+                      <MenuItem key={r.id} value={r.id}>
+                        {r.Lib_region || '—'}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth required>
+                  <InputLabel>Département</InputLabel>
+                  <Select
+                    value={formData.DepartementId || ''}
+                    onChange={(e) => handleFormChange('DepartementId', e.target.value)}
+                    label="Département"
+                    disabled={!formData.RegionId}
+                    displayEmpty
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner un département</em>
+                    </MenuItem>
+                    {filteredDepartements.map((d) => (
+                      <MenuItem key={d.id} value={d.id}>
+                        {d.Lib_Departement || '—'}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth required>
+                  <InputLabel>Sous-préfecture</InputLabel>
+                  <Select
+                    value={formData.SousprefId || ''}
+                    onChange={(e) => handleFormChange('SousprefId', e.target.value)}
+                    label="Sous-préfecture"
+                    disabled={!formData.DepartementId}
+                    displayEmpty
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner une sous-préfecture</em>
+                    </MenuItem>
+                    {filteredSousprefs.map((s) => (
+                      <MenuItem key={s.id} value={s.id}>
+                        {s.Lib_Souspref || '—'}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth required>
+                  <InputLabel>Secteur administratif</InputLabel>
+                  <Select
+                    value={formData.SecteurAdministratifId || ''}
+                    onChange={(e) => handleFormChange('SecteurAdministratifId', e.target.value)}
+                    label="Secteur administratif"
+                    disabled={!formData.SousprefId}
+                    displayEmpty
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner un secteur</em>
+                    </MenuItem>
+                    {filteredSecteursAdministratifs.map((s) => (
+                      <MenuItem key={s.id} value={s.id}>
+                        {s.Lib_SecteurAdministratif || '—'}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>Zone de dénombrement</InputLabel>
+                  <Select
+                    value={formData.ZonedenombreId || ''}
+                    onChange={(e) => handleFormChange('ZonedenombreId', e.target.value)}
+                    label="Zone de dénombrement"
+                    disabled={!formData.SecteurAdministratifId}
+                    displayEmpty
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner une zone</em>
+                    </MenuItem>
+                    {filteredZonedenombres.map((z) => (
+                      <MenuItem key={z.id} value={z.id}>
+                        {z.Lib_ZD || '—'}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>Village</InputLabel>
+                  <Select
+                    value={formData.VillageId || ''}
+                    onChange={(e) => handleFormChange('VillageId', e.target.value)}
+                    label="Village"
+                    disabled={!formData.ZonedenombreId}
+                    displayEmpty
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner un village</em>
+                    </MenuItem>
+                    {filteredVillages.map((v) => (
+                      <MenuItem key={v.id} value={v.id}>
+                        {v.Lib_village || '—'}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>Localité</InputLabel>
+                  <Select
+                    value={formData.LocaliteId || ''}
+                    onChange={(e) => handleFormChange('LocaliteId', e.target.value)}
+                    label="Localité"
+                    disabled={!formData.VillageId}
+                    displayEmpty
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner une localité</em>
+                    </MenuItem>
+                    {filteredLocalites.map((l) => (
+                      <MenuItem key={l.id} value={l.id}>
+                        {l.Lib_localite || '—'}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Informations du chef de ménage */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="primary" sx={{ mt: 2, mb: 1 }}>
+                  Informations du chef de ménage
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Nom du chef"
+                  value={formData.NomChefMenage}
+                  onChange={(e) => handleFormChange('NomChefMenage', e.target.value)}
+                  required
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Prénom du chef"
+                  value={formData.PrenomChefMenage}
+                  onChange={(e) => handleFormChange('PrenomChefMenage', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Contact du chef"
+                  value={formData.ContactChefMenage}
+                  onChange={(e) => handleFormChange('ContactChefMenage', e.target.value)}
+                />
+              </Grid>
+
+              {/* Informations sur les exploitants */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="primary" sx={{ mt: 2, mb: 1 }}>
+                  Informations sur les exploitants
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.HasanacProducteur}
+                      onChange={(e) => handleFormChange('HasanacProducteur', e.target.checked)}
+                    />
+                  }
+                  label="A un producteur d'anacarde"
+                />
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Nombre d'exploitants"
+                  type="number"
+                  value={formData.NombreExploitants}
+                  onChange={(e) => handleFormChange('NombreExploitants', parseInt(e.target.value) || 0)}
+                  inputProps={{ min: 0 }}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.ExploitantIsPresent}
+                      onChange={(e) => handleFormChange('ExploitantIsPresent', e.target.checked)}
+                    />
+                  }
+                  label="Exploitant présent"
+                />
+              </Grid>
+
+              {/* Informations sur le représentant */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="primary" sx={{ mt: 2, mb: 1 }}>
+                  Informations du représentant (si exploitant absent)
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.RepresentantIsPresent}
+                      onChange={(e) => handleFormChange('RepresentantIsPresent', e.target.checked)}
+                    />
+                  }
+                  label="Représentant présent"
+                />
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <TextField
+                  fullWidth
+                  label="Nom du représentant"
+                  value={formData.NomRepresentant}
+                  onChange={(e) => handleFormChange('NomRepresentant', e.target.value)}
+                  disabled={!formData.RepresentantIsPresent}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <TextField
+                  fullWidth
+                  label="Prénom du représentant"
+                  value={formData.PrenomRepresentant}
+                  onChange={(e) => handleFormChange('PrenomRepresentant', e.target.value)}
+                  disabled={!formData.RepresentantIsPresent}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <TextField
+                  fullWidth
+                  label="Contact du représentant"
+                  value={formData.ContactRepresentant}
+                  onChange={(e) => handleFormChange('ContactRepresentant', e.target.value)}
+                  disabled={!formData.RepresentantIsPresent}
+                />
+              </Grid>
+
+              {/* Enquêteur */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="primary" sx={{ mt: 2, mb: 1 }}>
+                  Enquêteur
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>Enquêteur</InputLabel>
+                  <Select
+                    value={formData.EnqueteurId || ''}
+                    onChange={(e) => handleFormChange('EnqueteurId', e.target.value)}
+                    label="Enquêteur"
+                    disabled={index === 0}
+                    displayEmpty
+                  >
+                    {index !== 0 && (
+                      <MenuItem value="">
+                        <em>Sélectionner un enquêteur</em>
+                      </MenuItem>
+                    )}
+                    {enqueteurs.map((e) => {
+                      const fullName = `${e.Pren_ut || ''} ${e.Nom_ut || ''}`.trim();
+                      const displayName = fullName || e.email || '—';
+                      return (
+                        <MenuItem key={e.id || e._id} value={e.id || e._id}>
+                          {displayName}
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                  {index === 0 && (
+                    <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5 }}>
+                      Enquêteur actuel : {user ? (
+                        // Gérer les deux formats : nouveau (Pren_ut/Nom_ut) et ancien (firstName/lastName)
+                        `${user.Pren_ut || user.firstName || ''} ${user.Nom_ut || user.lastName || ''}`.trim() || user.email || '—'
+                      ) : '—'}
+                    </Typography>
+                  )}
+                </FormControl>
+              </Grid>
+
+              {/* Coordonnées GPS */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="primary" sx={{ mt: 2, mb: 1 }}>
+                  Coordonnées GPS
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12}>
+                {index === 0 ? (
+                  // Mode création : affichage non modifiable
+                  <TextField
+                    fullWidth
+                    label="Coordonnées GPS"
+                    value={formData.CoordonneesGPS || (gpsLoading ? 'Récupération en cours...' : 'En attente de géolocalisation')}
+                    disabled
+                    multiline
+                    rows={3}
+                    helperText="Les coordonnées GPS sont automatiquement récupérées lors de la création"
+                  />
+                ) : (
+                  // Mode édition : modification possible
+                  <GeoJSONInput
+                    value={formData.CoordonneesGPS}
+                    onChange={(value) => handleFormChange('CoordonneesGPS', value)}
+                    label="Coordonnées GPS (optionnel)"
+                  />
+                )}
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpen(false)}>Annuler</Button>
+            <Button 
+              onClick={onSubmit} 
+              variant="contained"
+              disabled={
+                !formData.PaysId || 
+                !formData.DistrictId || 
+                !formData.RegionId || 
+                !formData.DepartementId || 
+                !formData.SousprefId || 
+                !formData.SecteurAdministratifId || 
+                !formData.ZonedenombreId || 
+                !formData.LocaliteId || 
+                !formData.EnqueteurId 
+              }
+            >
+              {index === 0 ? 'Créer' : 'Modifier'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      ))}
+
+      {/* Dialog de suppression */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="sm">
+        <DialogTitle>Confirmer la suppression</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Êtes-vous sûr de vouloir supprimer le ménage "{selectedMenage?.Cod_menage}" ?
+          </Typography>
+          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+            Cette action est irréversible.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Annuler</Button>
+          <Button onClick={handleSubmitDelete} color="error" variant="contained">
+            Supprimer
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
+  );
+};
+
+export default MenagesListPage;

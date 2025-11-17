@@ -35,6 +35,7 @@ import {
   Email as EmailIcon,
   Phone as PhoneIcon
 } from '@mui/icons-material';
+import { usersAPI, handleApiError } from '../../../services/api';
 
 const CreateUserPage = () => {
   const navigate = useNavigate();
@@ -58,14 +59,23 @@ const CreateUserPage = () => {
   });
 
   useEffect(() => {
-    // Charger les profils et utilisateurs (mock)
+    // Charger les profils et utilisateurs
     const loadData = async () => {
       try {
-        await new Promise((r) => setTimeout(r, 300));
+        // Charger les utilisateurs existants pour la liste des responsables
+        const response = await usersAPI.getAll({ limit: 1000 });
+        const data = response.data || response;
+        const usersList = Array.isArray(data) ? data : (data.items || []);
         
-        setProfiles(profiles);
-        setUsers(users);
+        const mockProfiles = [
+          { _id: '1', name: 'Administrateur' },
+          { _id: '2', name: 'Enquêteur' },
+          { _id: '3', name: 'Utilisateur' }
+        ];
+        setProfiles(mockProfiles);
+        setUsers(usersList);
       } catch (err) {
+        console.error('Erreur lors du chargement des données:', err);
         setError('Impossible de charger les données');
       }
     };
@@ -113,11 +123,46 @@ const CreateUserPage = () => {
 
     try {
       setIsLoading(true);
-      // TODO: appeler l'API pour créer l'utilisateur
-      await new Promise((r) => setTimeout(r, 800));
-      navigate('/users', { state: { message: 'Utilisateur créé avec succès' } });
+      setError('');
+
+      // Préparer les données à envoyer
+      const createData = {
+        email: formData.email.trim(),
+        password: formData.password,
+        Nom_ut: formData.Nom_ut.trim(),
+        Pren_ut: formData.Pren_ut.trim(),
+        Tel: formData.Tel.trim(),
+        Genre: formData.Genre,
+        profileId: formData.profileId || null,
+        ResponsableId: formData.ResponsableId || null
+      };
+
+      // Convertir la photo en base64 si elle a été sélectionnée
+      if (formData.Photo && formData.Photo instanceof File) {
+        const base64Photo = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(formData.Photo);
+        });
+        createData.Photo = base64Photo;
+      }
+
+      console.log('Données de création:', createData);
+
+      // Créer l'utilisateur
+      const newUser = await usersAPI.create(createData);
+      console.log('Utilisateur créé:', newUser);
+
+      navigate('/users', { 
+        state: { 
+          message: 'Utilisateur créé avec succès',
+          severity: 'success'
+        } 
+      });
     } catch (err) {
-      setError('Erreur lors de la création de l\'utilisateur');
+      console.error('Erreur lors de la création:', err);
+      setError(handleApiError(err));
     } finally {
       setIsLoading(false);
     }
@@ -249,7 +294,7 @@ const CreateUserPage = () => {
                         value={formData.Nom_ut}
                         onChange={(e) => setFormData(prev => ({ ...prev, Nom_ut: e.target.value }))}
                         disabled={isLoading}
-                        placeholder="KOUAME"
+                        placeholder="Nom"
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -260,7 +305,7 @@ const CreateUserPage = () => {
                         value={formData.Pren_ut}
                         onChange={(e) => setFormData(prev => ({ ...prev, Pren_ut: e.target.value }))}
                         disabled={isLoading}
-                        placeholder="Jean"
+                        placeholder="Prénom"
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -333,7 +378,7 @@ const CreateUserPage = () => {
                         >
                           <MenuItem value="">Aucun responsable</MenuItem>
                           {users.map((user) => (
-                            <MenuItem key={user._id} value={user._id}>
+                            <MenuItem key={user.id} value={user.id}>
                               {user.Pren_ut} {user.Nom_ut} ({user.email})
                             </MenuItem>
                           ))}
