@@ -76,7 +76,7 @@ const DashboardPage = () => {
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Box>
             <Typography variant="h4" gutterBottom fontWeight="bold">
-              Bienvenue, {user?.user.firstName || 'Utilisateur'} {user?.user.lastName || ''}
+              Bienvenue, {user?.firstName || 'Utilisateur'} {user?.lastName || ''}
             </Typography>
             <Typography variant="body1" color="text.secondary">
               Tableau de bord - Vue d&apos;ensemble du système eFarmer
