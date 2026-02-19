@@ -40,6 +40,7 @@ import {
   Person as PersonIcon,
   LocationOn as LocationIcon,
   CheckCircle as CheckCircleIcon,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
 
 import LoadingSpinner from '@presentation/components/Common/LoadingSpinner.jsx';
@@ -264,7 +265,7 @@ const MenagesListPage = () => {
         localitesData,
         usersData,
       ] = await Promise.all([
-        paysAPI.getAll({ limit: 100 }),
+        paysAPI.getLocal(),
         districtAPI.getAll({ limit: 100 }),
         regionsAPI.getAll({ limit: 100 }),
         departementsAPI.getAll({ limit: 200 }),
@@ -275,7 +276,8 @@ const MenagesListPage = () => {
         localitesAPI.getAll({ limit: 3000 }),
         usersAPI.getAll({ limit: 200 }),
       ]);
-      setPays(Array.isArray(paysData) ? paysData : (paysData?.data || []));
+      // getLocal() returns a single country object, wrap it in an array
+      setPays(paysData?.data ? [paysData.data] : []);
       setAllDistricts(Array.isArray(districtsData) ? districtsData : (districtsData?.data || []));
       setAllRegions(Array.isArray(regionsData?.data) ? regionsData.data : []);
       setAllDepartements(Array.isArray(departementsData?.data) ? departementsData.data : []);
@@ -362,6 +364,10 @@ const MenagesListPage = () => {
 
   const handleOpenCreate = () => {
     const initialData = getInitialFormData();
+    // Auto-select the local country
+    if (pays.length > 0) {
+      initialData.PaysId = pays[0]._id || pays[0].id;
+    }
     console.log('handleOpenCreate - user:', user);
     console.log('handleOpenCreate - initialData avant:', initialData);
     // Définir automatiquement l'enquêteur avec l'utilisateur connecté
@@ -463,6 +469,84 @@ const MenagesListPage = () => {
       setError(null);
     } catch (err) {
       setError(handleApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGeneratePDF = async (menage) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const menageId = menage.id || menage._id;
+      console.log('Génération PDF pour ménage:', menageId, menage.Cod_menage);
+      
+      // Récupérer le token (compatible avec authToken et token)
+      const token = localStorage.getItem('authToken') || 
+                    sessionStorage.getItem('authToken') || 
+                    localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('Authentification requise. Veuillez vous reconnecter.');
+      }
+      
+      // Appel à l'API pour générer le PDF
+      const apiUrl = `/api/administrative/menage/${menageId}/pdf`;
+      console.log('Appel API:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      console.log('Réponse API:', response.status, response.statusText);
+      console.log('Content-Type:', response.headers.get('content-type'));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erreur serveur:', errorText);
+        throw new Error(`Erreur lors de la génération du PDF: ${response.status} ${response.statusText}`);
+      }
+
+      // Créer un blob à partir de la réponse avec type explicite
+      const blob = await response.blob();
+      console.log('Blob créé:', blob.size, 'bytes, type:', blob.type);
+      
+      if (blob.size === 0) {
+        throw new Error('Le PDF généré est vide');
+      }
+      
+      // Créer un blob avec le type correct si nécessaire
+      const pdfBlob = blob.type === 'application/pdf' 
+        ? blob 
+        : new Blob([blob], { type: 'application/pdf' });
+      
+      // Créer un lien de téléchargement et le déclencher
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Questionnaire_Denombrement_${menage.Cod_menage || menageId}.pdf`;
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      console.log('Téléchargement déclenché');
+      
+      // Nettoyer après un court délai
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        console.log('Nettoyage effectué');
+      }, 100);
+      
+      setError(null);
+    } catch (err) {
+      console.error('Erreur lors de la génération du PDF:', err);
+      setError('Erreur lors de la génération du PDF: ' + (err.message || 'Erreur inconnue'));
     } finally {
       setLoading(false);
     }
@@ -680,6 +764,15 @@ const MenagesListPage = () => {
                       )}
                     </TableCell>
                     <TableCell align="right">
+                      <Tooltip title="Générer PDF">
+                        <IconButton
+                          color="success"
+                          size="small"
+                          onClick={() => handleGeneratePDF(menage)}
+                        >
+                          <PdfIcon />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="Modifier">
                         <IconButton
                           color="primary"

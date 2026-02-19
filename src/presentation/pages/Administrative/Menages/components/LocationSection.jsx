@@ -33,6 +33,10 @@ const LocationSection = ({
   localites,
 }) => {
   console.log('LocationSection - MilieuResidence:', formData.MilieuResidence, 'Type:', typeof formData.MilieuResidence);
+  const safeSelectValue = (list, value) => {
+    if (!value) return '';
+    return list.some((item) => (item._id || item.id) === value) ? value : '';
+  };
   
   return (
     <Accordion defaultExpanded>
@@ -44,36 +48,17 @@ const LocationSection = ({
       </AccordionSummary>
       <AccordionDetails>
         <Grid container spacing={2}>
-          {/* Pays */}
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth required>
-              <InputLabel>Pays</InputLabel>
-              <Select
-                value={formData.PaysId || ''}
-                onChange={(e) => handleFormChange('PaysId', e.target.value)}
-                label="Pays"
-              >
-                <MenuItem value="">
-                  <em>Sélectionner un pays</em>
-                </MenuItem>
-                {pays.map((p) => (
-                  <MenuItem key={p._id || p.id} value={p._id || p.id}>
-                    {p.Lib_pays || p.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-
+          {/* Pays - Hidden, auto-selected to local country */}
+          {/* The PaysId is automatically set to the local country */}
+          
           {/* District */}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
               <InputLabel>District</InputLabel>
               <Select
-                value={formData.DistrictId || ''}
+                value={safeSelectValue(districts, formData.DistrictId)}
                 onChange={(e) => handleFormChange('DistrictId', e.target.value)}
                 label="District"
-                disabled={!formData.PaysId}
               >
                 <MenuItem value="">
                   <em>Sélectionner un district</em>
@@ -92,7 +77,7 @@ const LocationSection = ({
             <FormControl fullWidth required>
               <InputLabel>Région</InputLabel>
               <Select
-                value={formData.RegionId || ''}
+                value={safeSelectValue(regions, formData.RegionId)}
                 onChange={(e) => handleFormChange('RegionId', e.target.value)}
                 label="Région"
                 disabled={!formData.DistrictId}
@@ -114,7 +99,7 @@ const LocationSection = ({
             <FormControl fullWidth required>
               <InputLabel>Département</InputLabel>
               <Select
-                value={formData.DepartementId || ''}
+                value={safeSelectValue(departements, formData.DepartementId)}
                 onChange={(e) => handleFormChange('DepartementId', e.target.value)}
                 label="Département"
                 disabled={!formData.RegionId}
@@ -136,7 +121,7 @@ const LocationSection = ({
             <FormControl fullWidth required>
               <InputLabel>Sous-préfecture</InputLabel>
               <Select
-                value={formData.SousprefId || ''}
+                value={safeSelectValue(sousprefectures, formData.SousprefId)}
                 onChange={(e) => handleFormChange('SousprefId', e.target.value)}
                 label="Sous-préfecture"
                 disabled={!formData.DepartementId}
@@ -158,7 +143,7 @@ const LocationSection = ({
             <FormControl fullWidth required>
               <InputLabel>Secteur administratif</InputLabel>
               <Select
-                value={formData.SecteurAdministratifId || ''}
+                value={safeSelectValue(secteursAdministratifs, formData.SecteurAdministratifId)}
                 onChange={(e) => handleFormChange('SecteurAdministratifId', e.target.value)}
                 label="Secteur administratif"
                 disabled={!formData.SousprefId}
@@ -180,7 +165,7 @@ const LocationSection = ({
             <FormControl fullWidth required>
               <InputLabel>Zone de dénombrement</InputLabel>
               <Select
-                value={formData.ZonedenombreId || ''}
+                value={safeSelectValue(zonedenombres, formData.ZonedenombreId)}
                 onChange={(e) => handleFormChange('ZonedenombreId', e.target.value)}
                 label="Zone de dénombrement"
                 disabled={!formData.SecteurAdministratifId}
@@ -202,7 +187,7 @@ const LocationSection = ({
             <FormControl fullWidth required>
               <InputLabel>Village (Localité)</InputLabel>
               <Select
-                value={formData.VillageId || ''}
+                value={safeSelectValue(villages, formData.VillageId)}
                 onChange={(e) => handleFormChange('VillageId', e.target.value)}
                 label="Village (Localité)"
                 disabled={!formData.ZonedenombreId}
@@ -224,7 +209,7 @@ const LocationSection = ({
             <FormControl fullWidth required>
               <InputLabel>Quartier / Campement</InputLabel>
               <Select
-                value={formData.LocaliteId || ''}
+                value={safeSelectValue(localites, formData.LocaliteId)}
                 onChange={(e) => handleFormChange('LocaliteId', e.target.value)}
                 label="Quartier / Campement"
                 disabled={!formData.VillageId}

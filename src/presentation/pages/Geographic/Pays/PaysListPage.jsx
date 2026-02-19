@@ -28,6 +28,8 @@ import {
   CardContent,
   Fab,
   Tooltip,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -35,6 +37,7 @@ import {
   Delete as DeleteIcon,
   Search as SearchIcon,
   Public as PublicIcon,
+  Home as HomeIcon,
 } from '@mui/icons-material';
 
 import LoadingSpinner from '@presentation/components/Common/LoadingSpinner.jsx';
@@ -63,6 +66,7 @@ const PaysListPage = () => {
     Coordonnee: null,
     Indicatif: '',
     Sommeil: false,
+    Islocal: false,
   });
 
   useEffect(() => {
@@ -127,6 +131,7 @@ const PaysListPage = () => {
       Coordonnee: null,
       Indicatif: '',
       Sommeil: false,
+      Islocal: false,
     });
   };
 
@@ -154,6 +159,7 @@ const PaysListPage = () => {
       Coordonnee: coordonnee || null,
       Indicatif: pays.Indicatif || '',
       Sommeil: pays.Sommeil || false,
+      Islocal: pays.Islocal || false,
     });
     setEditDialogOpen(true);
   };
@@ -304,7 +310,13 @@ const PaysListPage = () => {
                     <TableRow key={p._id || p.id} hover>
                       <TableCell>
                         <Box display="flex" alignItems="center">
-                          <PublicIcon sx={{ mr: 1, color: 'primary.main' }} />
+                          {p.Islocal ? (
+                            <Tooltip title="Pays local">
+                              <HomeIcon sx={{ mr: 1, color: 'success.main' }} />
+                            </Tooltip>
+                          ) : (
+                            <PublicIcon sx={{ mr: 1, color: 'primary.main' }} />
+                          )}
                           <Typography variant="body1" fontWeight="medium">
                             {p.Lib_pays || '—'}
                           </Typography>
@@ -392,6 +404,17 @@ const PaysListPage = () => {
                 label="Coordonnées (Point GeoJSON)"
               />
             </Grid>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.Islocal}
+                    onChange={(e) => handleFormChange('Islocal', e.target.checked)}
+                  />
+                }
+                label="Pays local (pays de l'enquête)"
+              />
+            </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
@@ -435,6 +458,17 @@ const PaysListPage = () => {
                 onChange={(value) => handleFormChange('Coordonnee', value)}
                 geometryType="Point"
                 label="Coordonnées (Point GeoJSON)"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.Islocal}
+                    onChange={(e) => handleFormChange('Islocal', e.target.checked)}
+                  />
+                }
+                label="Pays local (pays de l'enquête)"
               />
             </Grid>
           </Grid>

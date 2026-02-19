@@ -19,7 +19,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'https://efarmer-interviews-f0ecbea91792.herokuapp.com',
+        target: 'http://localhost:5001',
         changeOrigin: true,
         secure: false
       }

@@ -134,7 +134,10 @@ const createCRUDService = (endpoint) => ({
 // Services spécifiques pour chaque entité - avec les vrais endpoints API
 
 // === Geographic Module ===
-export const paysAPI = createCRUDService('/geographic/pays');
+export const paysAPI = {
+  ...createCRUDService('/geographic/pays'),
+  getLocal: () => apiCall('/geographic/pays/local'),
+};
 export const districtAPI = createCRUDService('/geographic/districts');
 export const regionsAPI = createCRUDService('/geographic/regions');
 export const departementsAPI = createCRUDService('/geographic/departements');

@@ -10,6 +10,7 @@ export class UserEntity extends BaseEntity {
   constructor({
     id,
     email,
+    code_ut,
     nomUt,
     prenomUt,
     telephone = '',
@@ -25,6 +26,7 @@ export class UserEntity extends BaseEntity {
     super(id);
     
     this._email = email;
+    this._code_ut = code_ut;
     this._nomUt = nomUt || '';
     this._prenomUt = prenomUt || '';
     this._telephone = telephone;
@@ -43,6 +45,7 @@ export class UserEntity extends BaseEntity {
 
   // Getters
   get email() { return this._email; }
+  get code_ut() { return this._code_ut; }
   get nomUt() { return this._nomUt; }
   get prenomUt() { return this._prenomUt; }
   get telephone() { return this._telephone; }
@@ -136,6 +139,7 @@ export class UserEntity extends BaseEntity {
     return {
       ...super.toPlainObject(),
       email: this._email,
+      code_ut: this._code_ut,
       nomUt: this._nomUt,
       prenomUt: this._prenomUt,
       telephone: this._telephone,
@@ -156,15 +160,16 @@ export class UserEntity extends BaseEntity {
     return new UserEntity({
       id: data.id || data._id,
       email: data.email,
-      nomUt: data.nomUt,
-      prenomUt: data.prenomUt,
-      telephone: data.telephone,
-      genre: data.genre,
+      code_ut: data.code_ut,
+      nomUt: data.nomUt || data.Nom_ut,
+      prenomUt: data.prenomUt || data.Pren_ut,
+      telephone: data.telephone || data.Tel,
+      genre: data.genre !== undefined ? data.genre : (data.Genre !== undefined ? data.Genre : 0),
       profileId: data.profileId,
       isGodMode: data.isGodMode,
-      sommeil: data.sommeil,
-      responsableId: data.responsableId,
-      photo: data.photo,
+      sommeil: data.sommeil !== undefined ? data.sommeil : (data.Sommeil !== undefined ? data.Sommeil : false),
+      responsableId: data.responsableId || data.ResponsableId,
+      photo: data.photo || data.Photo,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt
     });

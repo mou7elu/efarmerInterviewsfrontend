@@ -42,6 +42,11 @@ const GeoJSONInput = ({ value, onChange, label, type = 'all', disabled = false, 
   const [capturing, setCapturing] = useState(false);
 
   // Fonction pour convertir les coordonnées GeoJSON en format Leaflet
+  const toNumber = (value) => {
+    const num = typeof value === 'string' ? Number(value) : value;
+    return Number.isFinite(num) ? num : null;
+  };
+
   const parseGeoJSONForMap = (geojson) => {
     try {
       const obj = typeof geojson === 'string' ? JSON.parse(geojson) : geojson;
@@ -62,10 +67,15 @@ const GeoJSONInput = ({ value, onChange, label, type = 'all', disabled = false, 
       // Gérer Point
       if (obj.type === 'Point' && Array.isArray(obj.coordinates)) {
         // Point: [longitude, latitude] -> [latitude, longitude]
+        const lat = toNumber(obj.coordinates[1]);
+        const lng = toNumber(obj.coordinates[0]);
+        if (lat === null || lng === null) {
+          return null;
+        }
         return {
           type: 'Point',
-          position: [obj.coordinates[1], obj.coordinates[0]],
-          center: [obj.coordinates[1], obj.coordinates[0]],
+          position: [lat, lng],
+          center: [lat, lng],
           zoom: 13
         };
       } 
@@ -73,12 +83,29 @@ const GeoJSONInput = ({ value, onChange, label, type = 'all', disabled = false, 
       // Gérer Polygon
       if (obj.type === 'Polygon' && Array.isArray(obj.coordinates)) {
         // Polygon: convertir [lng, lat] en [lat, lng]
-        const positions = obj.coordinates[0].map(([lng, lat]) => [lat, lng]);
+        const positions = obj.coordinates[0]
+          .map(([lng, lat]) => {
+            const safeLat = toNumber(lat);
+            const safeLng = toNumber(lng);
+            if (safeLat === null || safeLng === null) {
+              return null;
+            }
+            return [safeLat, safeLng];
+          })
+          .filter(Boolean);
+
+        if (positions.length === 0) {
+          return null;
+        }
         // Calculer le centre du polygone
         const sumLat = positions.reduce((sum, [lat]) => sum + lat, 0);
         const sumLng = positions.reduce((sum, [, lng]) => sum + lng, 0);
         const center = [sumLat / positions.length, sumLng / positions.length];
         
+        if (center.some((coord) => !Number.isFinite(coord))) {
+          return null;
+        }
+
         return {
           type: 'Polygon',
           positions,

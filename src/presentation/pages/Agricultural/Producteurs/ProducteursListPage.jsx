@@ -282,6 +282,37 @@ const ProducteursListPage = () => {
     }));
   };
 
+  const normalizeProducteurPayload = (data) => {
+    const payload = { ...data };
+    const objectIdFields = [
+      'MenageId',
+      'EnqueteurId',
+      'PaysNaissRepresentant',
+      'LieuNaissRepresentant',
+      'NiveauScolaireRepresentant',
+      'ProfessionRepresentant',
+      'PaysdorigineRepresentant',
+      'PaysNaissExploitant',
+      'LieuNaissExploitant',
+      'NiveauScolaireExploitant',
+      'ProfessionExploitant',
+      'PaysdorigineExploitant',
+      'PieceExploitant',
+    ];
+
+    objectIdFields.forEach((field) => {
+      if (payload[field] === '') {
+        payload[field] = null;
+      }
+    });
+
+    delete payload.id;
+    delete payload.createdAt;
+    delete payload.updatedAt;
+
+    return payload;
+  };
+
   const handleSubmitCreate = async () => {
     try {
       // Validation de base
@@ -301,7 +332,8 @@ const ProducteursListPage = () => {
       }
 
       setLoading(true);
-      await producteursAPI.create(formData);
+      const payload = normalizeProducteurPayload(formData);
+      await producteursAPI.create(payload);
       setCreateDialogOpen(false);
       loadData();
       setError(null);
@@ -315,7 +347,8 @@ const ProducteursListPage = () => {
   const handleSubmitEdit = async () => {
     try {
       setLoading(true);
-      await producteursAPI.update(selectedProducteur.id, formData);
+      const payload = normalizeProducteurPayload(formData);
+      await producteursAPI.update(selectedProducteur.id, payload);
       setEditDialogOpen(false);
       loadData();
       setError(null);

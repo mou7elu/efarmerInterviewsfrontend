@@ -176,13 +176,16 @@ const SousprefsListPage = () => {
 
   const handleSubmitCreate = async () => {
     try {
+      console.log('handleSubmitCreate - formData:', formData);
       await sousprefsAPI.create(formData);
       setCreateDialogOpen(false);
       resetForm();
       loadData();
     } catch (error) {
       console.error('Erreur lors de la création:', error);
-      setError(handleApiError(error));
+      const errorMessage = handleApiError(error);
+      setError(errorMessage);
+      alert(`Erreur: ${errorMessage}`);
     }
   };
 

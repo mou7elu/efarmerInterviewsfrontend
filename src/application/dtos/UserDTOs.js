@@ -7,6 +7,7 @@ export class UserDTO {
   constructor(data) {
     this.id = data.id;
     this.email = data.email;
+    this.code_ut = data.code_ut;
     this.nomUt = data.nomUt;
     this.prenomUt = data.prenomUt;
     this.telephone = data.telephone;
@@ -28,21 +29,29 @@ export class UserDTO {
   }
 
   static fromApiResponse(apiData) {
+    // Support des deux formats (camelCase et backend)
+    const nomUt = apiData.nomUt || apiData.Nom_ut || '';
+    const prenomUt = apiData.prenomUt || apiData.Pren_ut || '';
+    const telephone = apiData.telephone || apiData.Tel || '';
+    const genre = apiData.genre !== undefined ? apiData.genre : (apiData.Genre !== undefined ? apiData.Genre : 0);
+    const sommeil = apiData.sommeil !== undefined ? apiData.sommeil : (apiData.Sommeil !== undefined ? apiData.Sommeil : false);
+    
     return new UserDTO({
       id: apiData.id || apiData._id,
       email: apiData.email,
-      nomUt: apiData.nomUt,
-      prenomUt: apiData.prenomUt,
-      telephone: apiData.telephone,
-      genre: apiData.genre,
+      code_ut: apiData.code_ut,
+      nomUt,
+      prenomUt,
+      telephone,
+      genre,
       profileId: apiData.profileId,
       isGodMode: apiData.isGodMode,
-      sommeil: apiData.sommeil,
-      responsableId: apiData.responsableId,
-      photo: apiData.photo,
-      fullName: apiData.fullName || `${apiData.prenomUt} ${apiData.nomUt}`.trim(),
-      initials: apiData.initials || `${apiData.prenomUt?.[0] || ''}${apiData.nomUt?.[0] || ''}`.toUpperCase(),
-      isActive: apiData.isActive || !apiData.sommeil,
+      sommeil,
+      responsableId: apiData.responsableId || apiData.ResponsableId,
+      photo: apiData.photo || apiData.Photo,
+      fullName: apiData.fullName || `${prenomUt} ${nomUt}`.trim(),
+      initials: apiData.initials || `${prenomUt?.[0] || ''}${nomUt?.[0] || ''}`.toUpperCase(),
+      isActive: apiData.isActive !== undefined ? apiData.isActive : !sommeil,
       createdAt: apiData.createdAt,
       updatedAt: apiData.updatedAt
     });
@@ -94,10 +103,10 @@ export class UserCreateDTO {
     return {
       email: this.email,
       password: this.password,
-      nomUt: this.nomUt,
-      prenomUt: this.prenomUt,
-      telephone: this.telephone,
-      genre: this.genre,
+      Nom_ut: this.nomUt,
+      Pren_ut: this.prenomUt,
+      Tel: this.telephone,
+      Genre: this.genre,
       profileId: this.profileId,
       isGodMode: this.isGodMode
     };
@@ -128,12 +137,12 @@ export class UserUpdateDTO {
   toApiPayload() {
     const payload = {};
     
-    if (this.nomUt !== undefined) payload.nomUt = this.nomUt;
-    if (this.prenomUt !== undefined) payload.prenomUt = this.prenomUt;
-    if (this.telephone !== undefined) payload.telephone = this.telephone;
-    if (this.genre !== undefined) payload.genre = this.genre;
+    if (this.nomUt !== undefined) payload.Nom_ut = this.nomUt;
+    if (this.prenomUt !== undefined) payload.Pren_ut = this.prenomUt;
+    if (this.telephone !== undefined) payload.Tel = this.telephone;
+    if (this.genre !== undefined) payload.Genre = this.genre;
     if (this.profileId !== undefined) payload.profileId = this.profileId;
-    if (this.photo !== undefined) payload.photo = this.photo;
+    if (this.photo !== undefined) payload.Photo = this.photo;
     
     return payload;
   }

@@ -213,7 +213,7 @@ const SIGPage = () => {
 
         // Charger les données en parallèle
         const [paysRes, regionsRes, zonesRes, parcellesRes, menagesRes] = await Promise.allSettled([
-          paysAPI.getAll({ limit: 1000 }),
+          paysAPI.getLocal({ limit: 1000 }),
           regionsAPI.getAll({ limit: 1000 }),
           zonesInterditesAPI.getAll({ limit: 1000 }),
           parcellesAPI.getAll({ limit: 100000 }),
