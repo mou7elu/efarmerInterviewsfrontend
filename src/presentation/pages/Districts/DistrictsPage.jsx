@@ -110,6 +110,7 @@ const DistrictsPage = () => {
     }
   };
 
+
   const applyFilters = () => {
     let filtered = [...districts];
 
@@ -176,6 +177,7 @@ const DistrictsPage = () => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
+
 
   if (loading) {
     return <LoadingSpinner size={60} message="Chargement des districts..." />;

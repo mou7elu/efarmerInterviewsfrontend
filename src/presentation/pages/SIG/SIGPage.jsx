@@ -17,8 +17,10 @@ import {
   ListItemText, 
   IconButton, 
   Chip,
-  Container
+  Container,
+  useMediaQuery
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { 
   ExpandMore as ExpandMoreIcon, 
   Visibility as VisibilityIcon, 
@@ -27,7 +29,9 @@ import {
   Dangerous as DangerousIcon,
   Agriculture as AgricultureIcon,
   ZoomIn as ZoomInIcon,
-  Home as HomeIcon
+  Home as HomeIcon,
+  Menu as MenuIcon,
+  Close as CloseIcon
 } from "@mui/icons-material";
 import { MapContainer, TileLayer, FeatureGroup, GeoJSON, LayersControl, useMap, CircleMarker, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -36,11 +40,14 @@ import "leaflet/dist/leaflet.css";
 import { paysAPI, regionsAPI, parcellesAPI, zonesInterditesAPI, menagesAPI } from '../../../services/api';
 
 const SIGPage = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [paysPolygons, setPaysPolygons] = useState(null);
   const [regionsPolygons, setRegionsPolygons] = useState([]);
   const [zonesInterditesPolygons, setZonesInterditesPolygons] = useState([]);
   const [parcellesPolygons, setParcellesPolygons] = useState([]);
   const [menagesPoints, setMenagesPoints] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   
   const [showPays, setShowPays] = useState(true);
   const [showRegions, setShowRegions] = useState(true);
@@ -56,6 +63,10 @@ const SIGPage = () => {
   const mapRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
 
   // Fonction pour valider un GeoJSON
   const isValidGeoJSON = (data) => {
@@ -418,16 +429,23 @@ const SIGPage = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', width: "100%", height: '100vh' }}>
+    <Box sx={{ display: 'flex', width: "100%", height: '100vh', position: 'relative' }}>
       {/* Panneau de contrôle latéral */}
       <Paper 
         elevation={3} 
         sx={{ 
-          width: 350, 
+          width: { xs: '80vw', sm: 350 }, 
+          maxWidth: { xs: 320, sm: 350 },
           height: '100vh', 
           overflow: 'auto',
           backgroundColor: '#f5f5f5',
-          borderRight: '2px solid #ddd'
+          borderRight: '2px solid #ddd',
+          position: { xs: 'absolute', sm: 'relative' },
+          left: 0,
+          top: 0,
+          zIndex: 1200,
+          transform: { xs: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)', sm: 'none' },
+          transition: { xs: 'transform 0.25s ease', sm: 'none' }
         }}
       >
         <Box sx={{ p: 2 }}>
@@ -731,8 +749,32 @@ const SIGPage = () => {
         </Box>
       </Paper>
 
+      {isMobile && sidebarOpen && (
+        <Box
+          onClick={() => setSidebarOpen(false)}
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            zIndex: 1100
+          }}
+        />
+      )}
+
       {/* Carte principale */}
-      <Box sx={{ flexGrow: 1, height: '100vh' }}>
+      <Box sx={{ flexGrow: 1, height: '100vh', position: 'relative' }}>
+        {isMobile && (
+          <Box sx={{ position: 'absolute', top: 12, left: 12, zIndex: 1300 }}>
+            <IconButton
+              color="primary"
+              onClick={() => setSidebarOpen((prev) => !prev)}
+              sx={{ backgroundColor: 'white', boxShadow: 1 }}
+              aria-label={sidebarOpen ? 'Fermer le panneau' : 'Ouvrir le panneau'}
+            >
+              {sidebarOpen ? <CloseIcon /> : <MenuIcon />}
+            </IconButton>
+          </Box>
+        )}
         <MapContainer 
           center={[7.5, -5.5]} 
           zoom={7} 

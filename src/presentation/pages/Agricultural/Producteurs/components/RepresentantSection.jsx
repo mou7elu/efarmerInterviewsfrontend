@@ -40,7 +40,7 @@ const RepresentantSection = ({
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Quel est le lien entre vous et l'exploitant ?</InputLabel>
+              <InputLabel>Q.17 Quel est le lien entre vous et l'exploitant ?</InputLabel>
               <Select
                 value={formData.LienRepresentExploitant || ''}
                 onChange={(e) => handleFormChange('LienRepresentExploitant', e.target.value)}
@@ -57,7 +57,7 @@ const RepresentantSection = ({
             <TextField
               fullWidth
               required
-              label="Nom du représentant"
+              label="Q.18 Nom du représentant"
               value={formData.NomRepresentant || ''}
               onChange={(e) => handleFormChange('NomRepresentant', e.target.value)}
             />
@@ -67,7 +67,7 @@ const RepresentantSection = ({
             <TextField
               fullWidth
               required
-              label="Prénom du représentant"
+              label="Q.19 Prénom du représentant"
               value={formData.PrenomRepresentant || ''}
               onChange={(e) => handleFormChange('PrenomRepresentant', e.target.value)}
             />
@@ -77,7 +77,7 @@ const RepresentantSection = ({
             <TextField
               fullWidth
               type="date"
-              label="Date de naissance"
+              label="Q.20 Date de naissance"
               value={formData.DateNaissRepresentant || ''}
               onChange={(e) => handleFormChange('DateNaissRepresentant', e.target.value)}
               InputLabelProps={{ shrink: true }}
@@ -86,7 +86,7 @@ const RepresentantSection = ({
           
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Pays de naissance</InputLabel>
+              <InputLabel>Q.21 Pays de naissance</InputLabel>
               <Select
                 value={formData.PaysNaissRepresentant || ''}
                 onChange={(e) => handleFormChange('PaysNaissRepresentant', e.target.value)}
@@ -104,7 +104,7 @@ const RepresentantSection = ({
           
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Lieu de naissance (Sous-préfecture)</InputLabel>
+              <InputLabel>Q.22 Lieu de naissance (Sous-préfecture)</InputLabel>
               <Select
                 value={formData.LieuNaissRepresentant || ''}
                 onChange={(e) => handleFormChange('LieuNaissRepresentant', e.target.value)}
@@ -122,7 +122,7 @@ const RepresentantSection = ({
           
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Sexe</InputLabel>
+              <InputLabel>Q.23 Sexe</InputLabel>
               <Select
                 value={formData.GenreRepresentant || ''}
                 onChange={(e) => handleFormChange('GenreRepresentant', e.target.value)}
@@ -137,7 +137,7 @@ const RepresentantSection = ({
           
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Niveau d'instruction</InputLabel>
+              <InputLabel>Q.24 Niveau d'instruction</InputLabel>
               <Select
                 value={formData.NiveauScolaireRepresentant || ''}
                 onChange={(e) => handleFormChange('NiveauScolaireRepresentant', e.target.value)}
@@ -161,13 +161,13 @@ const RepresentantSection = ({
                   onChange={(e) => handleFormChange('HasFormationAgricole', e.target.checked)}
                 />
               }
-              label="Avez-vous reçu une formation agricole ?"
+              label="Q.25 Avez-vous reçu une formation agricole ?"
             />
           </Grid>
           
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Profession</InputLabel>
+              <InputLabel>Q.26 Profession</InputLabel>
               <Select
                 value={formData.ProfessionRepresentant || ''}
                 onChange={(e) => handleFormChange('ProfessionRepresentant', e.target.value)}
@@ -185,7 +185,7 @@ const RepresentantSection = ({
           
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Nationalité</InputLabel>
+              <InputLabel>Q.27 Nationalité</InputLabel>
               <Select
                 value={formData.NatioliteRepresentant || ''}
                 onChange={(e) => handleFormChange('NatioliteRepresentant', e.target.value)}
@@ -201,7 +201,7 @@ const RepresentantSection = ({
           {formData.NatioliteRepresentant === 2 && (
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel>Quel est votre pays d'origine ?</InputLabel>
+                <InputLabel>Q.28 Quel est votre pays d'origine ?</InputLabel>
                 <Select
                   value={formData.PaysdorigineRepresentant || ''}
                   onChange={(e) => handleFormChange('PaysdorigineRepresentant', e.target.value)}
@@ -221,20 +221,20 @@ const RepresentantSection = ({
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
-              label="Contact principal"
+              label="Q.29 Contact principal"
               value={formData.ContactPrincipalRepresentant || ''}
               onChange={(e) => handleFormChange('ContactPrincipalRepresentant', e.target.value)}
-              placeholder="Ex: +225 0123456789"
+              placeholder="Ex: +225 xxxxxxxxx"
             />
           </Grid>
           
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
-              label="Contact secondaire"
+              label="Q.30 Contact secondaire"
               value={formData.ContactSecondaireRepresentant || ''}
               onChange={(e) => handleFormChange('ContactSecondaireRepresentant', e.target.value)}
-              placeholder="Ex: +225 0123456789"
+              placeholder="Ex: +225 xxxxxxxxx"
             />
           </Grid>
         </Grid>

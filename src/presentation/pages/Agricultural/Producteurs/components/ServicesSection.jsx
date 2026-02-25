@@ -94,12 +94,12 @@ const ServicesSection = ({ formData, handleFormChange }) => {
 
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>A quels réseaux mobiles avez-vous accès ? (Question choix multiple) </InputLabel>
+              <InputLabel>Q.70 A quels réseaux mobiles avez-vous accès ? (Question choix multiple) </InputLabel>
               <Select
                 multiple
                 value={formData.ReseauxMobile || []}
                 onChange={(e) => handleFormChange('ReseauxMobile', e.target.value)}
-                input={<OutlinedInput label="Réseaux mobiles (choix multiple)" />}
+                input={<OutlinedInput label="Q.70 A quels réseaux mobiles avez-vous accès ? (Question choix multiple)" />}
                 renderValue={(selected) => (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                     {selected.map((value) => (
@@ -129,7 +129,7 @@ const ServicesSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasInternet', e.target.checked)}
                 />
               }
-              label="Avez-vous accès à Internet ?"
+              label="Q.71 Avez-vous accès à Internet ?"
             />
           </Grid>
 
@@ -150,7 +150,7 @@ const ServicesSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasInfastructureSante', e.target.checked)}
                 />
               }
-              label="Avez-vous accès à des infrastructures de santé ?"
+              label="Q.72 Avez-vous accès à des infrastructures de santé ?"
             />
           </Grid>
 
@@ -159,7 +159,7 @@ const ServicesSection = ({ formData, handleFormChange }) => {
               <TextField
                 fullWidth
                 type="number"
-                label="Quelle est la distance entre votre localité et l'Infrastructure de santé ?  (Km)"
+                label="Q.73 Quelle est la distance entre votre localité et l'Infrastructure de santé ?  (Km)"
                 value={formData.distanceInfastructureSanteKm || 0}
                 onChange={(e) => handleFormChange('distanceInfastructureSanteKm', Number.parseFloat(e.target.value) || 0)}
                 inputProps={{ min: 0, step: 0.1 }}
@@ -169,7 +169,7 @@ const ServicesSection = ({ formData, handleFormChange }) => {
 
           <Grid item xs={12} md={4}>
             <FormControl fullWidth>
-              <InputLabel>Quel type de praticien de santé consultezvous prioritairement ? </InputLabel>
+              <InputLabel>Q.74 Quel type de praticien de santé consultez-vous prioritairement ? </InputLabel>
               <Select
                 value={formData.PraticienSante || ''}
                 onChange={(e) => handleFormChange('PraticienSante', e.target.value)}
@@ -189,7 +189,7 @@ const ServicesSection = ({ formData, handleFormChange }) => {
             <TextField
               fullWidth
               type="number"
-              label="À combien s'élèvent vos dépenses annuelles de santé ?  (FCFA)"
+              label="Q.75 À combien s'élèvent vos dépenses annuelles de santé ?  (FCFA)"
               value={formData.DepenseSanteAnnuel || 0}
               onChange={(e) => handleFormChange('DepenseSanteAnnuel', Number.parseInt(e.target.value) || 0)}
               inputProps={{ min: 0 }}
@@ -207,12 +207,12 @@ const ServicesSection = ({ formData, handleFormChange }) => {
 
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Avez-vous accès aux Infrastructures d'éducation suivantes ? (Choix multiple)</InputLabel>
+              <InputLabel>Q.76 Avez-vous accès aux Infrastructures d'éducation suivantes ? (Choix multiple)</InputLabel>
               <Select
                 multiple
                 value={formData.InfrastructueEducation || []}
                 onChange={(e) => handleFormChange('InfrastructueEducation', e.target.value)}
-                input={<OutlinedInput label="Infrastructures éducatives (choix multiple)" />}
+                input={<OutlinedInput label="Q.76 Avez-vous accès aux Infrastructures d'éducation suivantes ? (Choix multiple)" />}
                 renderValue={(selected) => (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                     {selected.map((value) => (
@@ -251,19 +251,19 @@ const ServicesSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasCompteBancaire', e.target.checked)}
                 />
               }
-              label="Avez-vous un compte bancaire ?"
+              label="Q.78 Avez-vous un compte bancaire ?"
             />
           </Grid>
 
           {!formData.HasCompteBancaire && (
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel>Pourquoi n’avez-vous pas de compte bancaire ? (Question à choix multiple) </InputLabel>
+                <InputLabel>Q.80 Pourquoi n’avez-vous pas de compte bancaire ? (Question à choix multiple) </InputLabel>
                 <Select
                   multiple
                   value={formData.WhyPasCompteBancaire || []}
                   onChange={(e) => handleFormChange('WhyPasCompteBancaire', e.target.value)}
-                  input={<OutlinedInput label="Pourquoi pas de compte bancaire? (choix multiple)" />}
+                  input={<OutlinedInput label="Q.80 Pourquoi n’avez-vous pas de compte bancaire ? (Question à choix multiple)" />}
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map((value) => (
@@ -294,7 +294,7 @@ const ServicesSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasMobileMoney', e.target.checked)}
                 />
               }
-              label="Avez-vous un compte mobile money ?"
+              label="Q.81 Avez-vous un compte mobile money ?"
             />
           </Grid>
 
@@ -337,7 +337,7 @@ const ServicesSection = ({ formData, handleFormChange }) => {
                       onChange={(e) => handleFormChange('HasUseMobileMoneyService', e.target.checked)}
                     />
                   }
-                  label="Avez-vous déjà utilisé les services Mobile Money ? "
+                  label="Q.84 Avez-vous déjà utilisé les services Mobile Money ? "
                 />
               </Grid>
 
@@ -345,7 +345,7 @@ const ServicesSection = ({ formData, handleFormChange }) => {
                 <>
                   <Grid item xs={12} md={6}>
                     <FormControl fullWidth>
-                      <InputLabel>Pour quels services utilisez-vous les Mobile Money ?  </InputLabel>
+                      <InputLabel>Q.85 Pour quels services utilisez-vous les Mobile Money ?  </InputLabel>
                       <Select
                         multiple
                         value={formData.TypeServiceMobileMoney || []}
@@ -376,7 +376,7 @@ const ServicesSection = ({ formData, handleFormChange }) => {
                     <TextField
                       fullWidth
                       type="number"
-                      label="Quel est le montant mensuel de vos transactions ?   (FCFA)"
+                      label="Q.86 Quel est le montant mensuel de vos transactions ?   (FCFA)"
                       value={formData.MontantMensuelMobileMoney || 0}
                       onChange={(e) => handleFormChange('MontantMensuelMobileMoney', Number.parseInt(e.target.value) || 0)}
                       inputProps={{ min: 0 }}
@@ -387,7 +387,7 @@ const ServicesSection = ({ formData, handleFormChange }) => {
                     <TextField
                       fullWidth
                       type="number"
-                      label="Quel est le montant maximum de vos transactions ?   (FCFA)"
+                      label="Q.87 Quel est le montant maximum de vos transactions ?   (FCFA)"
                       value={formData.MontantMaximumTransaction || 0}
                       onChange={(e) => handleFormChange('MontantMaximumTransaction', Number.parseInt(e.target.value) || 0)}
                       inputProps={{ min: 0 }}
@@ -401,12 +401,12 @@ const ServicesSection = ({ formData, handleFormChange }) => {
           {!formData.HasMobileMoney && (
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel>Pourquoi ne disposez-vous pas de compte Mobile Money ? </InputLabel>
+                <InputLabel>Q.83 Pourquoi ne disposez-vous pas de compte Mobile Money ? </InputLabel>
                 <Select
                   multiple
                   value={formData.WhyPasMobileMoney || []}
                   onChange={(e) => handleFormChange('WhyPasMobileMoney', e.target.value)}
-                  input={<OutlinedInput label="Pourquoi pas de Mobile Money? (choix multiple)" />}
+                  input={<OutlinedInput label="Q.83 Pourquoi ne disposez-vous pas de compte Mobile Money ? (choix multiple)" />}
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map((value) => (

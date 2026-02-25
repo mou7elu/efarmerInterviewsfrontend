@@ -67,13 +67,19 @@ const CreateUserPage = () => {
         const data = response.data || response;
         const usersList = Array.isArray(data) ? data : (data.items || []);
         
+        // Filtrer pour exclure les administrateurs Super (isGodMode = true)
+        const filteredUsers = usersList.filter(user => !user.isGodMode);
+        
         const mockProfiles = [
           { _id: '1', name: 'Administrateur' },
           { _id: '2', name: 'Enquêteur' },
-          { _id: '3', name: 'Utilisateur' }
+          { _id: '3', name: 'Coordinateur' },
+          { _id: '4', name: 'Superviseur' },
+          { _id: '5', name: 'Contrôleur' },
+          { _id: '6', name: 'Chef d\'équipe' }
         ];
         setProfiles(mockProfiles);
-        setUsers(usersList);
+        setUsers(filteredUsers);
       } catch (err) {
         console.error('Erreur lors du chargement des données:', err);
         setError('Impossible de charger les données');
@@ -132,10 +138,23 @@ const CreateUserPage = () => {
         Nom_ut: formData.Nom_ut.trim(),
         Pren_ut: formData.Pren_ut.trim(),
         Tel: formData.Tel.trim(),
-        Genre: formData.Genre,
-        profileId: formData.profileId || null,
-        ResponsableId: formData.ResponsableId || null
+        Genre: formData.Genre
       };
+
+      // Ajouter profileId s'il est sélectionné (convertir en nombre si c'est "1", "2", "3", "4", "5", ou "6")
+      if (formData.profileId) {
+        const profileIdStr = String(formData.profileId);
+        if (['1', '2', '3', '4', '5', '6'].includes(profileIdStr)) {
+          createData.profileId = parseInt(profileIdStr, 10);
+        } else {
+          createData.profileId = formData.profileId;
+        }
+      }
+
+      // Ajouter ResponsableId seulement s'il est valide
+      if (formData.ResponsableId) {
+        createData.ResponsableId = formData.ResponsableId;
+      }
 
       // Convertir la photo en base64 si elle a été sélectionnée
       if (formData.Photo && formData.Photo instanceof File) {

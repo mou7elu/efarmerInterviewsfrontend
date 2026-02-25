@@ -32,11 +32,11 @@ const EnqueteurSection = ({ formData, handleFormChange, enqueteurs, currentUser 
           {/* Enquêteur - Grisé en création et modification */}
           <Grid item xs={12}>
             <FormControl fullWidth required>
-              <InputLabel>Enquêteur</InputLabel>
+              <InputLabel> Q.5 Enquêteur</InputLabel>
               <Select
                 value={formData.EnqueteurId || ''}
                 onChange={(e) => handleFormChange('EnqueteurId', e.target.value)}
-                label="Enquêteur"
+                label="Q.5 Enquêteur"
                 disabled
               >
                 <MenuItem value="">

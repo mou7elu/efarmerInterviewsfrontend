@@ -47,11 +47,11 @@ const BasicInfoSection = ({ formData, handleFormChange, menages, producteurs, de
 
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Producteur</InputLabel>
+              <InputLabel>Q.115 Exploitant</InputLabel>
               <Select
                 value={formData.ProducteurId || ''}
                 onChange={(e) => handleFormChange('ProducteurId', e.target.value)}
-                label="Producteur"
+                label="Q.115 Exploitant"
               >
                 <MenuItem value=""><em>Sélectionner...</em></MenuItem>
                 {producteurs.map((prod) => (
@@ -78,7 +78,7 @@ const BasicInfoSection = ({ formData, handleFormChange, menages, producteurs, de
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
-              label="Code parcelle"
+              label="Q.116 Code parcelle"
               value={formData.Code || ''}
               onChange={(e) => handleFormChange('Code', e.target.value)}
               helperText="Auto-généré côté serveur si vide"

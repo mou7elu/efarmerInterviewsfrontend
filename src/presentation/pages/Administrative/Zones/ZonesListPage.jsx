@@ -4,10 +4,12 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 import {
   Container,
   Typography,
   Paper,
+  Alert,
   Table,
   TableBody,
   TableCell,
@@ -33,6 +35,7 @@ import {
   Select,
   MenuItem,
   Chip,
+  LinearProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -41,6 +44,7 @@ import {
   Search as SearchIcon,
   Place as PlaceIcon,
   AccountTree as AccountTreeIcon,
+  FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
 
 import LoadingSpinner from '@presentation/components/Common/LoadingSpinner.jsx';
@@ -53,6 +57,13 @@ const ZonesListPage = () => {
   const [secteurs, setSecteurs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [importFile, setImportFile] = useState(null);
+  const [importIsLoading, setImportIsLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importError, setImportError] = useState('');
+  const [importSuccess, setImportSuccess] = useState('');
+  const [importStats, setImportStats] = useState(null);
+  const [importErrors, setImportErrors] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,6 +111,14 @@ const ZonesListPage = () => {
     setPage(0);
   }, [zones, searchTerm, secteurFilter]);
 
+  const normalizeHeader = (header) => header.toLowerCase().replace(/\s+/g, '').replace(/_/g, '');
+  const normalizeName = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/'/g, '');
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -137,6 +156,144 @@ const ZonesListPage = () => {
   const handleRowsPerPageChange = (event) => {
     setRowsPerPage(Number.parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = ['Lib_ZD', 'Cod_ZD', 'Lib_SecteurAdministratif'];
+    const example = ['EXEMPLE_LIB', 'EXEMPLE_CODE', 'EXEMPLE_SECTEUR'];
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'zones');
+
+    const fileBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([fileBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'zones-modele.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFileChange = (event) => {
+    const [file] = event.target.files || [];
+    setImportFile(file || null);
+    setImportError('');
+    setImportSuccess('');
+    setImportStats(null);
+    setImportProgress(0);
+    setImportErrors([]);
+  };
+
+  const handleImportFile = async () => {
+    if (!importFile) {
+      setImportError('Veuillez choisir un fichier Excel ou CSV.');
+      return;
+    }
+
+    setImportIsLoading(true);
+    setImportError('');
+    setImportSuccess('');
+    setImportStats(null);
+    setImportProgress(0);
+    setImportErrors([]);
+
+    try {
+      const arrayBuffer = await importFile.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+
+      if (!firstSheetName) {
+        throw new Error('Aucune feuille detectee dans le fichier.');
+      }
+
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      if (!rows.length) {
+        throw new Error('Le fichier est vide.');
+      }
+
+      const mappedRows = rows.map((row, index) => {
+        const normalizedRow = Object.entries(row).reduce((acc, [key, value]) => {
+          acc[normalizeHeader(String(key))] = value;
+          return acc;
+        }, {});
+
+        const libZd = String(normalizedRow.libzd || '').trim();
+        const codZd = String(normalizedRow.codzd || '').trim();
+        const libSecteur = String(normalizedRow.libsecteuradministratif || '').trim();
+        const secteurId = String(normalizedRow.secteuradministratifid || '').trim();
+
+        const matchedSecteur = libSecteur
+          ? secteurs.find((s) => normalizeName(s.Lib_SecteurAdministratif) === normalizeName(libSecteur))
+          : null;
+        const resolvedSecteurId = secteurId
+          || (matchedSecteur ? (matchedSecteur._id || matchedSecteur.id) : '');
+
+        if (!libZd || !codZd || !resolvedSecteurId) {
+          return { index, error: 'Lib_ZD, Cod_ZD et Lib_SecteurAdministratif sont obligatoires.' };
+        }
+
+        if (libSecteur && !matchedSecteur) {
+          return { index, error: `Secteur introuvable: ${libSecteur}` };
+        }
+
+        return {
+          index,
+          data: {
+            Lib_ZD: libZd,
+            Cod_ZD: codZd,
+            SecteurAdministratifId: resolvedSecteurId,
+          }
+        };
+      });
+
+      const totalRows = mappedRows.length;
+      let successCount = 0;
+      const errors = [];
+
+      for (let i = 0; i < mappedRows.length; i += 1) {
+        const row = mappedRows[i];
+        setImportProgress(Math.round(((i + 1) / totalRows) * 100));
+
+        if (row.error) {
+          errors.push(`Ligne ${row.index + 2}: ${row.error}`);
+          continue;
+        }
+
+        try {
+          await zonesdenombreAPI.create(row.data);
+          successCount += 1;
+        } catch (error) {
+          const message = error?.message || 'Erreur lors de la creation.';
+          errors.push(`Ligne ${row.index + 2}: ${message}`);
+        }
+      }
+
+      setImportStats({ total: totalRows, success: successCount, failed: errors.length });
+      setImportErrors(errors);
+
+      if (errors.length) {
+        setImportError('Des erreurs sont survenues pendant l\'import.');
+      } else {
+        setImportSuccess('Importation terminee avec succes.');
+      }
+
+      await loadData();
+    } catch (error) {
+      console.error('Erreur lors de l\'import des zones:', error);
+      setImportError(error.message || 'Erreur lors de l\'import du fichier.');
+    } finally {
+      setImportIsLoading(false);
+      setImportProgress(0);
+    }
   };
 
   const handleFormChange = (field, value) => {
@@ -231,17 +388,75 @@ const ZonesListPage = () => {
     <Container maxWidth="xl">
       {/* En-tête */}
       <Box mb={4}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="flex-start"
+          flexWrap="wrap"
+          gap={2}
+          mb={2}
+        >
           <Typography variant="h4" component="h1">
             Zones de Dénombrement
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreate}
-          >
-            Nouvelle zone
-          </Button>
+          <Box display="flex" flexDirection="column" alignItems="flex-end" gap={2} sx={{ width: { xs: '100%', md: 560 } }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleCreate}
+            >
+              Nouvelle zone
+            </Button>
+            <Paper sx={{ p: 3, width: '100%' }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
+                <Box>
+                  <Typography variant="h6">Importer un fichier Excel</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Modele avec Lib_ZD, Cod_ZD et Lib_SecteurAdministratif.
+                  </Typography>
+                </Box>
+                <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={handleDownloadTemplate}>
+                  Telecharger le modele
+                </Button>
+              </Box>
+
+              {importError && <Alert severity="error" sx={{ mb: 2, mt: 2 }}>{importError}</Alert>}
+              {importSuccess && <Alert severity="success" sx={{ mb: 2, mt: 2 }}>{importSuccess}</Alert>}
+              {importStats && (
+                <Alert severity="info" sx={{ mb: 2, mt: 2 }}>
+                  {importStats.success} cree(s) sur {importStats.total} ligne(s). {importStats.failed} erreur(s).
+                </Alert>
+              )}
+              {importErrors.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 2, mt: 2 }}>
+                  <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                    {importErrors.map((message, index) => (
+                      <li key={`${index}-${message}`}>{message}</li>
+                    ))}
+                  </Box>
+                </Alert>
+              )}
+
+              <Grid container spacing={2} alignItems="center" sx={{ mt: 1 }}>
+                <Grid item xs={12} md={7}>
+                  <Button variant="outlined" component="label" fullWidth disabled={importIsLoading}>
+                    {importFile ? importFile.name : 'Choisir un fichier Excel/CSV'}
+                    <input type="file" hidden accept=".xlsx,.xls,.csv" onChange={handleImportFileChange} />
+                  </Button>
+                </Grid>
+                <Grid item xs={12} md={5}>
+                  <Button variant="contained" onClick={handleImportFile} disabled={importIsLoading || !importFile} fullWidth>
+                    {importIsLoading ? 'Importation...' : 'Importer le fichier'}
+                  </Button>
+                </Grid>
+                {importIsLoading && (
+                  <Grid item xs={12}>
+                    <LinearProgress variant="determinate" value={importProgress} />
+                  </Grid>
+                )}
+              </Grid>
+            </Paper>
+          </Box>
         </Box>
         
         {/* Statistiques */}

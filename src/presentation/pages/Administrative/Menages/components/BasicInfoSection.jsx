@@ -44,7 +44,7 @@ const BasicInfoSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasanacProducteur', e.target.checked)}
                 />
               }
-              label="Y-a-t'il des exploitants d'anacarde dans le ménage ? "
+              label="Q.14 Y-a-t'il des exploitants d'anacarde dans le ménage ? "
             />
           </Grid>
          
@@ -53,7 +53,7 @@ const BasicInfoSection = ({ formData, handleFormChange }) => {
           <Grid item xs={12} md={4}>
             <TextField
               fullWidth
-              label="Nom du chef de ménage"
+              label="Q.15 Nom du chef de ménage"
               value={formData.NomChefMenage || ''}
               onChange={(e) => handleFormChange('NomChefMenage', e.target.value)}
                disabled={!formData.HasanacProducteur}
@@ -64,7 +64,7 @@ const BasicInfoSection = ({ formData, handleFormChange }) => {
           <Grid item xs={12} md={4}>
             <TextField
               fullWidth
-              label="Prénom du chef de ménage"
+              label="Q.16 Prénom du chef de ménage"
               value={formData.PrenomChefMenage || ''}
               onChange={(e) => handleFormChange('PrenomChefMenage', e.target.value)}
               disabled={!formData.HasanacProducteur}
@@ -75,7 +75,7 @@ const BasicInfoSection = ({ formData, handleFormChange }) => {
           <Grid item xs={12} md={4}>
             <TextField
               fullWidth
-              label="Contact du chef de ménage"
+              label="Q.17 Contact du chef de ménage"
               value={formData.ContactChefMenage || ''}
               onChange={(e) => handleFormChange('ContactChefMenage', e.target.value)}
               placeholder="+225 XX XX XX XX XX"
@@ -88,7 +88,7 @@ const BasicInfoSection = ({ formData, handleFormChange }) => {
             <TextField
               fullWidth
               type="number"
-              label="Nombre d'exploitants d'anacardes"
+              label="Q.18 Nombre d'exploitants d'anacardes"
               value={formData.NombreExploitants || 0}
               onChange={(e) => handleFormChange('NombreExploitants', Number.parseInt(e.target.value, 10) || 0)}
               inputProps={{ min: 0 }}

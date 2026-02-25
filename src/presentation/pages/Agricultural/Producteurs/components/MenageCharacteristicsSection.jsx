@@ -117,12 +117,12 @@ const MenageCharacteristicsSection = ({ formData, handleFormChange }) => {
           {/* Type de bâtiment (choix multiple) */}
           <Grid item xs={12}>
             <FormControl fullWidth>
-              <InputLabel>Quel(s) type(s) de bâtiment(s) disposez-vous pour votre ménage ?(choix multiple)</InputLabel>
+              <InputLabel>Q.57 Quel(s) type(s) de bâtiment(s) disposez-vous pour votre ménage ?(choix multiple)</InputLabel>
               <Select
                 multiple
                 value={formData.TypeBatimentResidence || []}
                 onChange={(e) => handleFormChange('TypeBatimentResidence', e.target.value)}
-                input={<OutlinedInput label="Type de bâtiment de résidence (choix multiple)" />}
+                input={<OutlinedInput label="Q.57 Quel(s) type(s) de bâtiment(s) disposez-vous pour votre ménage ?(choix multiple)" />}
                 renderValue={(selected) => (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                     {selected.map((value) => (
@@ -157,7 +157,7 @@ const MenageCharacteristicsSection = ({ formData, handleFormChange }) => {
 
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Quel est le principal matériau de construction des bâtiments du ménage ?</InputLabel>
+              <InputLabel>Q.58 Quel est le principal matériau de construction des bâtiments du ménage ?</InputLabel>
               <Select
                 value={formData.PrincipalMateriauBatiment || ''}
                 onChange={(e) => handleFormChange('PrincipalMateriauBatiment', e.target.value)}
@@ -186,7 +186,7 @@ const MenageCharacteristicsSection = ({ formData, handleFormChange }) => {
 
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Quel est le principal matériau du toit du ménage ?</InputLabel>
+              <InputLabel>Q.59 Quel est le principal matériau du toit du ménage ?</InputLabel>
               <Select
                 value={formData.PrincipalMateriauToit || ''}
                 onChange={(e) => handleFormChange('PrincipalMateriauToit', e.target.value)}
@@ -214,7 +214,7 @@ const MenageCharacteristicsSection = ({ formData, handleFormChange }) => {
           )}
 <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>PQuel est le principal type de sanitaire utilisé par le ménage ?</InputLabel>
+              <InputLabel>Q.60 Quel est le principal type de sanitaire utilisé par le ménage ?</InputLabel>
               <Select
                 value={formData.PrincipaleInstallationSanitaire || ''}
                 onChange={(e) => handleFormChange('PrincipaleInstallationSanitaire', e.target.value)}
@@ -242,7 +242,7 @@ const MenageCharacteristicsSection = ({ formData, handleFormChange }) => {
           )}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Quelle est la principale source de combustible utilisée par le ménage ? </InputLabel>
+              <InputLabel>Q.61 Quelle est la principale source de combustible utilisée par le ménage ? </InputLabel>
               <Select
                 value={formData.PrincipaleSourceCombustible || ''}
                 onChange={(e) => handleFormChange('PrincipaleSourceCombustible', e.target.value)}
@@ -270,7 +270,7 @@ const MenageCharacteristicsSection = ({ formData, handleFormChange }) => {
           )}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Quelle est la principale source d'éclairage du ménage ?</InputLabel>
+              <InputLabel>Q.62 Quelle est la principale source d'éclairage du ménage ?</InputLabel>
               <Select
                 value={formData.PrincipaleSourceEclairage || ''}
                 onChange={(e) => handleFormChange('PrincipaleSourceEclairage', e.target.value)}
@@ -299,7 +299,7 @@ const MenageCharacteristicsSection = ({ formData, handleFormChange }) => {
 
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Quel est le principal mode d'approvisionnement en eau du ménage ?</InputLabel>
+              <InputLabel>Q.63 Quel est le principal mode d'approvisionnement en eau du ménage ?</InputLabel>
               <Select
                 value={formData.PrincipaleSourceEau || ''}
                 onChange={(e) => handleFormChange('PrincipaleSourceEau', e.target.value)}
@@ -332,7 +332,7 @@ const MenageCharacteristicsSection = ({ formData, handleFormChange }) => {
 
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Quel est le principal moyen de mobilité utilisé ? </InputLabel>
+              <InputLabel>Q.64 Quel est le principal moyen de mobilité utilisé ? </InputLabel>
               <Select
                 value={formData.PrincipalMoyenMobilite || ''}
                 onChange={(e) => handleFormChange('PrincipalMoyenMobilite', e.target.value)}

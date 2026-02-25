@@ -52,7 +52,7 @@ const InfrastructureSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasStockageBatimentAgricole', e.target.checked)}
                 />
               }
-              label="Avez-vous un bâtiment de stockage de produits agricoles ? "
+              label="Q.65 Avez-vous un bâtiment de stockage de produits agricoles ? "
             />
           </Grid>
 
@@ -61,7 +61,7 @@ const InfrastructureSection = ({ formData, handleFormChange }) => {
               <TextField
                 fullWidth
                 type="number"
-                label="Quelle est la capacité du bâtiment de stockage ? (tonne)"
+                label="Q.66 Quelle est la capacité du bâtiment de stockage ? (tonne)"
                 value={formData.CapaciteStockageKg || 0}
                 onChange={(e) => handleFormChange('CapaciteStockageKg', parseInt(e.target.value) || 0)}
                 inputProps={{ min: 0 }}
@@ -77,7 +77,7 @@ const InfrastructureSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasMachineAgricole', e.target.checked)}
                 />
               }
-              label="Utilisez-vous des machines agricoles ? (Pour son exploitation)"
+              label="Q.67 Utilisez-vous des machines agricoles ? (Pour son exploitation)"
             />
           </Grid>
 
@@ -85,7 +85,7 @@ const InfrastructureSection = ({ formData, handleFormChange }) => {
             <>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <InputLabel>Quelles sont les machines agricoles utilisez-vous ?</InputLabel>
+                  <InputLabel>Q.68 Quelles sont les machines agricoles utilisez-vous ?</InputLabel>
                   <Select
                     value={formData.MachineAgricole || ''}
                     onChange={(e) => handleFormChange('MachineAgricole', e.target.value)}
@@ -116,7 +116,7 @@ const InfrastructureSection = ({ formData, handleFormChange }) => {
 
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Quels équipements de séchage utilisez-vous ?*</InputLabel>
+              <InputLabel>Q.69 Quels équipements de séchage utilisez-vous ?*</InputLabel>
               <Select
                 value={formData.EquipementSechageAgricole || ''}
                 onChange={(e) => handleFormChange('EquipementSechageAgricole', e.target.value)}

@@ -30,7 +30,7 @@ const BasicInfoSection = ({ formData, handleFormChange, menages, defaultExpanded
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Ménage</InputLabel>
+              <InputLabel>Q.14 Ménage</InputLabel>
               <Select
                 value={formData.MenageId || ''}
                 onChange={(e) => handleFormChange('MenageId', e.target.value)}
@@ -54,7 +54,7 @@ const BasicInfoSection = ({ formData, handleFormChange, menages, defaultExpanded
                   onChange={(e) => handleFormChange('IsExploitant', e.target.checked)}
                 />
               }
-              label="Êtes-vous l'exploitant ? "
+              label="Q.15 Êtes-vous l'exploitant ? "
             />
           </Grid>
         </Grid>

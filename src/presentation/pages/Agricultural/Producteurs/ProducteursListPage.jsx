@@ -315,9 +315,19 @@ const ProducteursListPage = () => {
 
   const handleSubmitCreate = async () => {
     try {
+      const fallbackEnqueteurId = user?.id || user?._id || user?.userId || user?.user_id || user?.user?._id || user?.user?.id;
+      if (!formData.EnqueteurId && fallbackEnqueteurId) {
+        setFormData((prev) => ({ ...prev, EnqueteurId: fallbackEnqueteurId }));
+      }
+
       // Validation de base
       if (!formData.MenageId) {
         setError('Le ménage est requis');
+        return;
+      }
+
+      if (!formData.EnqueteurId && !fallbackEnqueteurId) {
+        setError('L\'enquêteur est requis');
         return;
       }
 
@@ -332,7 +342,10 @@ const ProducteursListPage = () => {
       }
 
       setLoading(true);
-      const payload = normalizeProducteurPayload(formData);
+      const payload = normalizeProducteurPayload({
+        ...formData,
+        EnqueteurId: formData.EnqueteurId || fallbackEnqueteurId || '',
+      });
       await producteursAPI.create(payload);
       setCreateDialogOpen(false);
       loadData();

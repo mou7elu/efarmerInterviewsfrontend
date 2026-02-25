@@ -27,7 +27,7 @@ const MenageCompositionSection = ({ formData, handleFormChange }) => {
             <TextField
               fullWidth
               type="number"
-              label="Combien de personnes vivent dans le ménage ?"
+              label="Q.52 Combien de personnes vivent dans le ménage ?"
               value={formData.NombreMembresMenage || 0}
               onChange={(e) => handleFormChange('NombreMembresMenage', parseInt(e.target.value) || 0)}
               inputProps={{ min: 0 }}
@@ -38,7 +38,7 @@ const MenageCompositionSection = ({ formData, handleFormChange }) => {
             <TextField
               fullWidth
               type="number"
-              label="Combien d’enfants avez-vous ?"
+              label="Q.53 Combien d’enfants avez-vous ?"
               value={formData.NombreEnfants || 0}
               onChange={(e) => handleFormChange('NombreEnfants', parseInt(e.target.value) || 0)}
               inputProps={{ min: 0 }}
@@ -49,8 +49,7 @@ const MenageCompositionSection = ({ formData, handleFormChange }) => {
             <TextField
               fullWidth
               type="number"
-              label="Combien d’enfants avez-vous scolarisés 
-cette année ?"
+              label="Q.54 Combien d’enfants avez-vous scolarisés cette année ?"
               value={formData.NombreEnfantsScolarisés || 0}
               onChange={(e) => handleFormChange('NombreEnfantsScolarisés', parseInt(e.target.value) || 0)}
               inputProps={{ min: 0 }}
@@ -60,7 +59,7 @@ cette année ?"
             <TextField
               fullWidth
               type="number"
-              label="PCombien d’autres personnes avez-vous en charge ? (Hors ménage) "
+              label="Q.55 Combien d’autres personnes avez-vous en charge ? (Hors ménage) "
               value={formData.NombrePersonnesChargeHorMenage || 0}
               onChange={(e) => handleFormChange('NombrePersonnesChargeHorMenage', parseInt(e.target.value) || 0)}
               inputProps={{ min: 0 }}
@@ -70,7 +69,7 @@ cette année ?"
             <TextField
               fullWidth
               type="number"
-              label="Combien de femmes avez-vous ?"
+              label="Q.56 Combien de femmes avez-vous ?"
               value={formData.NombreEpouse || 0}
               onChange={(e) => handleFormChange('NombreEpouse', parseInt(e.target.value) || 0)}
               inputProps={{ min: 0 }}

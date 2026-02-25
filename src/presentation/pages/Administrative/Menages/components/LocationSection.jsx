@@ -54,11 +54,11 @@ const LocationSection = ({
           {/* District */}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>District</InputLabel>
+              <InputLabel>Q.6 District</InputLabel>
               <Select
                 value={safeSelectValue(districts, formData.DistrictId)}
                 onChange={(e) => handleFormChange('DistrictId', e.target.value)}
-                label="District"
+                label="Q.6 District"
               >
                 <MenuItem value="">
                   <em>Sélectionner un district</em>
@@ -75,11 +75,11 @@ const LocationSection = ({
           {/* Région */}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Région</InputLabel>
+              <InputLabel>Q.7 Région</InputLabel>
               <Select
                 value={safeSelectValue(regions, formData.RegionId)}
                 onChange={(e) => handleFormChange('RegionId', e.target.value)}
-                label="Région"
+                label="Q.7 Région"
                 disabled={!formData.DistrictId}
               >
                 <MenuItem value="">
@@ -97,11 +97,11 @@ const LocationSection = ({
           {/* Département */}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Département</InputLabel>
+              <InputLabel>Q.8 Département</InputLabel>
               <Select
                 value={safeSelectValue(departements, formData.DepartementId)}
                 onChange={(e) => handleFormChange('DepartementId', e.target.value)}
-                label="Département"
+                label="Q.8 Département"
                 disabled={!formData.RegionId}
               >
                 <MenuItem value="">
@@ -119,11 +119,11 @@ const LocationSection = ({
           {/* Sous-préfecture */}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Sous-préfecture</InputLabel>
+              <InputLabel>Q.9 Sous-préfecture</InputLabel>
               <Select
                 value={safeSelectValue(sousprefectures, formData.SousprefId)}
                 onChange={(e) => handleFormChange('SousprefId', e.target.value)}
-                label="Sous-préfecture"
+                label="Q.9 Sous-préfecture"
                 disabled={!formData.DepartementId}
               >
                 <MenuItem value="">
@@ -141,11 +141,11 @@ const LocationSection = ({
           {/* Secteur administratif */}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Secteur administratif</InputLabel>
+              <InputLabel>Q.10 Secteur administratif</InputLabel>
               <Select
                 value={safeSelectValue(secteursAdministratifs, formData.SecteurAdministratifId)}
                 onChange={(e) => handleFormChange('SecteurAdministratifId', e.target.value)}
-                label="Secteur administratif"
+                label="Q.10 Secteur administratif"
                 disabled={!formData.SousprefId}
               >
                 <MenuItem value="">
@@ -163,11 +163,11 @@ const LocationSection = ({
           {/* Zone de dénombrement */}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Zone de dénombrement</InputLabel>
+              <InputLabel>Q.11 Zone de dénombrement</InputLabel>
               <Select
                 value={safeSelectValue(zonedenombres, formData.ZonedenombreId)}
                 onChange={(e) => handleFormChange('ZonedenombreId', e.target.value)}
-                label="Zone de dénombrement"
+                label="Q.11 Zone de dénombrement"
                 disabled={!formData.SecteurAdministratifId}
               >
                 <MenuItem value="">
@@ -185,15 +185,15 @@ const LocationSection = ({
           {/* Village (Localité) */}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Village (Localité)</InputLabel>
+              <InputLabel>Q.12 Localité(village)</InputLabel>
               <Select
                 value={safeSelectValue(villages, formData.VillageId)}
                 onChange={(e) => handleFormChange('VillageId', e.target.value)}
-                label="Village (Localité)"
+                label="Q.12 Localité(village)"
                 disabled={!formData.ZonedenombreId}
               >
                 <MenuItem value="">
-                  <em>Sélectionner un village</em>
+                  <em>Sélectionner une localité</em>
                 </MenuItem>
                 {villages.map((v) => (
                   <MenuItem key={v._id || v.id} value={v._id || v.id}>
@@ -207,11 +207,11 @@ const LocationSection = ({
           {/* Localité (Quartier/Campement) */}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Quartier / Campement</InputLabel>
+              <InputLabel>Q.13 Quartier / Campement</InputLabel>
               <Select
                 value={safeSelectValue(localites, formData.LocaliteId)}
                 onChange={(e) => handleFormChange('LocaliteId', e.target.value)}
-                label="Quartier / Campement"
+                label="Q.13 Quartier / Campement"
                 disabled={!formData.VillageId}
               >
                 <MenuItem value="">
@@ -229,11 +229,11 @@ const LocationSection = ({
           {/* Milieu de résidence */}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Milieu de résidence</InputLabel>
+              <InputLabel>Q.14 Milieu de résidence</InputLabel>
               <Select
                 value={formData.MilieuResidence || 0}
                 onChange={(e) => handleFormChange('MilieuResidence', Number(e.target.value))}
-                label="Milieu de résidence"
+                label="Q.14 Milieu de résidence"
               >
                 <MenuItem value={0}>
                   <em>Sélectionner le milieu</em>
@@ -251,7 +251,7 @@ const LocationSection = ({
               value={formData.CoordonneesGPS}
               onChange={(value) => handleFormChange('CoordonneesGPS', value)}
               geometryType="Point"
-              label="Coordonnées GPS du ménage"
+              label="Q.4 Coordonnées GPS du ménage"
               disabled
               autoCapture
             />

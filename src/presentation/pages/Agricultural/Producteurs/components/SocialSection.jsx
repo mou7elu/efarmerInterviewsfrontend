@@ -57,7 +57,7 @@ const SocialSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasAppartenanceGroupe', e.target.checked)}
                 />
               }
-              label="Appartenance à une organisation de producteurs"
+              label="Q.88 Appartenance à une organisation de producteurs"
             />
           </Grid>
 
@@ -65,7 +65,7 @@ const SocialSection = ({ formData, handleFormChange }) => {
             <>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <InputLabel>À quel type d'organisation appartenez-vous ? </InputLabel>
+                  <InputLabel>Q.89 À quel type d'organisation appartenez-vous ? </InputLabel>
                   <Select
                     value={formData.TypeGroupe || ''}
                     onChange={(e) => handleFormChange('TypeGroupe', e.target.value)}
@@ -84,7 +84,7 @@ const SocialSection = ({ formData, handleFormChange }) => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Quelle est la spécialisation de l'organisation ?"
+                  label="Q.90 Quelle est la spécialisation de l'organisation ?"
                   value={formData.SpecialiteGroupe || ''}
                   onChange={(e) => handleFormChange('SpecialiteGroupe', e.target.value)}
                   placeholder="Ex: Production d'anacarde, Maraîchage, etc."
@@ -102,7 +102,7 @@ const SocialSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasAppartenanceTontine', e.target.checked)}
                 />
               }
-              label="Appartenez-vous à une tontine ?"
+              label="Q.91 Appartenez-vous à une tontine ?"
             />
           </Grid>
 
@@ -110,12 +110,12 @@ const SocialSection = ({ formData, handleFormChange }) => {
             <>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <InputLabel>Quel est le type de tontine ?</InputLabel>
+                  <InputLabel>Q.92 Quel est le type de tontine ?</InputLabel>
                   <Select
                     multiple
                     value={formData.TypeTontine || []}
                     onChange={(e) => handleFormChange('TypeTontine', e.target.value)}
-                    input={<OutlinedInput label="Type de tontine (choix multiple)" />}
+                    input={<OutlinedInput label="Q.92 Quel est le type de tontine ? (choix multiple)" />}
                     renderValue={(selected) => (
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                         {selected.map((value) => (
@@ -142,7 +142,7 @@ const SocialSection = ({ formData, handleFormChange }) => {
                   <TextField
                     fullWidth
                     type="number"
-                    label="Quel est le montant de votre tontine ? (FCFA)"
+                    label="Q.93 Quel est le montant de votre tontine ? (FCFA)"
                     value={formData.MontantTontine || 0}
                     onChange={(e) => handleFormChange('MontantTontine', Number.parseInt(e.target.value) || 0)}
                     inputProps={{ min: 0 }}
@@ -153,12 +153,12 @@ const SocialSection = ({ formData, handleFormChange }) => {
               {formData.TypeTontine?.includes(2) && (
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
-                    <InputLabel>Quels sont les éléments en nature de votre tontine ?(Question à Choix multiples) </InputLabel>
+                    <InputLabel>Q.94 Quels sont les éléments en nature de votre tontine ?(Question à Choix multiples) </InputLabel>
                     <Select
                       multiple
                       value={formData.BienNatureTontine || []}
                       onChange={(e) => handleFormChange('BienNatureTontine', e.target.value)}
-                      input={<OutlinedInput label="Bien en nature versé (choix multiple)" />}
+                      input={<OutlinedInput label="Q.94 Quels sont les éléments en nature de votre tontine ?(Question à Choix multiples)" />}
                       renderValue={(selected) => (
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                           {selected.map((value) => (

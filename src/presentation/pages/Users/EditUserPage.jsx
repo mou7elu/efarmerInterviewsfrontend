@@ -84,16 +84,21 @@ const EditUserPage = () => {
         const usersData = usersRes && usersRes.data ? usersRes.data : usersRes;
         const usersList = Array.isArray(usersData) ? usersData : (usersData && usersData.items ? usersData.items : []);
 
-        // Mock profiles temporaire - remplacer quand /api/profiles sera disponible
-        const mockProfiles = [
-          { _id: '1', name: 'Administrateur' },
-          { _id: '2', name: 'Enquêteur' },
-          { _id: '3', name: 'Utilisateur' }
-        ];
+               
+               // Filtrer pour exclure les administrateurs Super (isGodMode = true)
+               const filteredUsers = usersList.filter(user => !user.isGodMode);
+               
+               const mockProfiles = [
+                 { _id: '1', name: 'Administrateur' },
+                 { _id: '2', name: 'Enquêteur' },
+                 { _id: '3', name: 'Coordinateur' },
+                 { _id: '4', name: 'Superviseur' },
+                 { _id: '5', name: 'Contrôleur' },
+                 { _id: '6', name: 'Chef d\'équipe' }
+               ];
         setProfiles(mockProfiles);
         // Normalize ids (_id or id)
-        setUsers(usersList.filter(u => (u._id || u.id) !== id));
-
+        setUsers(filteredUsers.filter(u => (u._id || u.id) !== id));
         setFormData({
           email: userData.email || '',
           password: '',

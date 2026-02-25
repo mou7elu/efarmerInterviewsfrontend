@@ -4,10 +4,12 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 import {
   Container,
   Typography,
   Paper,
+  Alert,
   Table,
   TableBody,
   TableCell,
@@ -32,6 +34,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  LinearProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,6 +43,7 @@ import {
   Search as SearchIcon,
   LocationCity as LocationCityIcon,
   Public as PublicIcon,
+  FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
 
 import LoadingSpinner from '@presentation/components/Common/LoadingSpinner.jsx';
@@ -51,6 +55,14 @@ const DistrictsListPage = () => {
   const [paysList, setPaysList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [importFile, setImportFile] = useState(null);
+  const [importIsLoading, setImportIsLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importError, setImportError] = useState('');
+  const [importSuccess, setImportSuccess] = useState('');
+  const [importStats, setImportStats] = useState(null);
+  const [importErrors, setImportErrors] = useState([]);
+  const [defaultPaysId, setDefaultPaysId] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
@@ -73,6 +85,12 @@ const DistrictsListPage = () => {
   }, []);
 
   useEffect(() => {
+    if (!defaultPaysId && paysList.length > 0) {
+      setDefaultPaysId(getDefaultPaysId());
+    }
+  }, [paysList, defaultPaysId]);
+
+  useEffect(() => {
     if (!searchTerm && !paysFilter) {
       setFilteredDistricts(districts);
     } else {
@@ -91,6 +109,22 @@ const DistrictsListPage = () => {
     }
     setPage(0);
   }, [districts, searchTerm, paysFilter]);
+
+  const normalizeHeader = (header) => header.toLowerCase().replace(/\s+/g, '').replace(/_/g, '');
+
+  const normalizeName = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/'/g, '');
+
+  const parseBoolean = (value) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    const stringValue = String(value).trim().toLowerCase();
+    return ['1', 'true', 'vrai', 'oui', 'yes'].includes(stringValue);
+  };
 
   const loadData = async () => {
     try {
@@ -120,6 +154,16 @@ const DistrictsListPage = () => {
     }
   };
 
+  const getDefaultPaysId = () => {
+    const normalizedTarget = normalizeName('Cote d\'Ivoire');
+    const matched = paysList.find((paysItem) => {
+      const label = paysItem?.Lib_pays || paysItem?.libPays?.Lib_pays || '';
+      return normalizeName(label) === normalizedTarget;
+    });
+
+    return matched?._id || matched?.id || '';
+  };
+
   const stats = {
     total: districts.length,
     pays: new Set(districts.map(d => d.PaysId).filter(Boolean)).size,
@@ -132,6 +176,143 @@ const DistrictsListPage = () => {
   const handleRowsPerPageChange = (event) => {
     setRowsPerPage(Number.parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = ['Lib_district', 'Cod_district'];
+    const example = ['EXEMPLE_LIB', 'EXEMPLE_CODE'];
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'districts');
+
+    const fileBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([fileBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'districts-modele.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFileChange = (event) => {
+    const [file] = event.target.files || [];
+    setImportFile(file || null);
+    setImportError('');
+    setImportSuccess('');
+    setImportStats(null);
+    setImportProgress(0);
+    setImportErrors([]);
+  };
+
+  const handleImportFile = async () => {
+    if (!importFile) {
+      setImportError('Veuillez choisir un fichier Excel ou CSV.');
+      return;
+    }
+
+    if (!defaultPaysId) {
+      setImportError('Veuillez selectionner un pays par defaut.');
+      return;
+    }
+
+    setImportIsLoading(true);
+    setImportError('');
+    setImportSuccess('');
+    setImportStats(null);
+    setImportProgress(0);
+    setImportErrors([]);
+
+    try {
+      const arrayBuffer = await importFile.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+
+      if (!firstSheetName) {
+        throw new Error('Aucune feuille detectee dans le fichier.');
+      }
+
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      if (!rows.length) {
+        throw new Error('Le fichier est vide.');
+      }
+
+      const mappedRows = rows.map((row, index) => {
+        const normalizedRow = Object.entries(row).reduce((acc, [key, value]) => {
+          acc[normalizeHeader(String(key))] = value;
+          return acc;
+        }, {});
+
+        const libDistrict = String(normalizedRow.libdistrict || '').trim();
+        const codDistrict = String(normalizedRow.coddistrict || '').trim();
+        const paysId = String(normalizedRow.paysid || defaultPaysId || '').trim();
+        const sommeil = parseBoolean(normalizedRow.sommeil || false);
+
+        if (!libDistrict || !codDistrict || !paysId) {
+          return {
+            index,
+            error: 'Lib_district et Cod_district sont obligatoires.'
+          };
+        }
+
+        return {
+          index,
+          data: {
+            Lib_district: libDistrict,
+            Cod_district: codDistrict,
+            PaysId: paysId,
+            Sommeil: sommeil
+          }
+        };
+      });
+
+      const totalRows = mappedRows.length;
+      let successCount = 0;
+      const errors = [];
+
+      for (let i = 0; i < mappedRows.length; i += 1) {
+        const row = mappedRows[i];
+        setImportProgress(Math.round(((i + 1) / totalRows) * 100));
+
+        if (row.error) {
+          errors.push(`Ligne ${row.index + 2}: ${row.error}`);
+          continue;
+        }
+
+        try {
+          await districtAPI.create(row.data);
+          successCount += 1;
+        } catch (err) {
+          const message = err?.message || 'Erreur lors de la creation.';
+          errors.push(`Ligne ${row.index + 2}: ${message}`);
+        }
+      }
+
+      setImportStats({ total: totalRows, success: successCount, failed: errors.length });
+      setImportErrors(errors);
+
+      if (errors.length) {
+        setImportError('Des erreurs sont survenues pendant l\'import.');
+      } else {
+        setImportSuccess('Importation terminee avec succes.');
+      }
+
+      await loadData();
+    } catch (err) {
+      console.error('Erreur lors de l\'import des districts:', err);
+      setImportError(err.message || 'Erreur lors de l\'import du fichier.');
+    } finally {
+      setImportIsLoading(false);
+      setImportProgress(0);
+    }
   };
 
   const handleFormChange = (field, value) => {
@@ -217,11 +398,21 @@ const DistrictsListPage = () => {
   return (
     <Container maxWidth="xl">
       <Box mb={4}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="flex-start"
+          flexWrap="wrap"
+          gap={2}
+          mb={2}
+        >
           <Typography variant="h4" component="h1">Districts</Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
-            Nouveau district
-          </Button>
+          <Box display="flex" flexDirection="column" alignItems="flex-end" gap={2} sx={{ width: { xs: '100%', md: 560 } }}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+              Nouveau district
+            </Button>
+            
+          </Box>
         </Box>
         
         <Grid container spacing={2} mb={3}>
@@ -344,6 +535,87 @@ const DistrictsListPage = () => {
         <DialogTitle>Nouveau district</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Paper sx={{ p: 3, width: '100%' }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
+                <Box>
+                  <Typography variant="h6">Importer un fichier Excel</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Modele avec Lib_district et Cod_district. Sommeil: false.
+                  </Typography>
+                </Box>
+                <Button
+                  variant="outlined"
+                  startIcon={<FileDownloadIcon />}
+                  onClick={handleDownloadTemplate}
+                >
+                  Telecharger le modele
+                </Button>
+              </Box>
+
+              {importError && <Alert severity="error" sx={{ mb: 2, mt: 2 }}>{importError}</Alert>}
+              {importSuccess && <Alert severity="success" sx={{ mb: 2, mt: 2 }}>{importSuccess}</Alert>}
+              {importStats && (
+                <Alert severity="info" sx={{ mb: 2, mt: 2 }}>
+                  {importStats.success} cree(s) sur {importStats.total} ligne(s). {importStats.failed} erreur(s).
+                </Alert>
+              )}
+              {importErrors.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 2, mt: 2 }}>
+                  <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                    {importErrors.map((message, index) => (
+                      <li key={`${index}-${message}`}>{message}</li>
+                    ))}
+                  </Box>
+                </Alert>
+              )}
+
+              <Grid container spacing={2} alignItems="center" sx={{ mt: 1 }}>
+                <Grid item xs={12} md={7}>
+                  <Button variant="outlined" component="label" fullWidth disabled={importIsLoading}>
+                    {importFile ? importFile.name : 'Choisir un fichier Excel/CSV'}
+                    <input
+                      type="file"
+                      hidden
+                      accept=".xlsx,.xls,.csv"
+                      onChange={handleImportFileChange}
+                    />
+                  </Button>
+                </Grid>
+                <Grid item xs={12} md={7}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>Pays par defaut</InputLabel>
+                    <Select
+                      value={defaultPaysId}
+                      onChange={(e) => setDefaultPaysId(e.target.value)}
+                      label="Pays par defaut"
+                      disabled={importIsLoading}
+                    >
+                      <MenuItem value="">Selectionner un pays</MenuItem>
+                      {paysList.map((p) => (
+                        <MenuItem key={p._id || p.id} value={p._id || p.id}>
+                          {p.Lib_pays || p.libPays?.Lib_pays || '—'}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={5}>
+                  <Button
+                    variant="contained"
+                    onClick={handleImportFile}
+                    disabled={importIsLoading || !importFile || !defaultPaysId}
+                    fullWidth
+                  >
+                    {importIsLoading ? 'Importation...' : 'Importer le fichier'}
+                  </Button>
+                </Grid>
+                {importIsLoading && (
+                  <Grid item xs={12}>
+                    <LinearProgress variant="determinate" value={importProgress} />
+                  </Grid>
+                )}
+              </Grid>
+            </Paper>
             <Grid item xs={12} md={6}>
               <TextField fullWidth label="Nom du district" value={formData.Lib_district} onChange={(e) => handleFormChange('Lib_district', e.target.value)} required />
             </Grid>

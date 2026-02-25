@@ -88,9 +88,12 @@ const UsersPage = () => {
       setUsers(filteredItems);
       setTotalCount(filteredItems.length);
           const mockProfiles = [
-          { _id: '1', name: 'Administrateur' },
-          { _id: '2', name: 'Enquêteur' },
-          { _id: '3', name: 'Utilisateur' }
+                 { _id: '1', name: 'Administrateur' },
+                 { _id: '2', name: 'Enquêteur' },
+                 { _id: '3', name: 'Coordinateur' },
+                 { _id: '4', name: 'Superviseur' },
+                 { _id: '5', name: 'Contrôleur' },
+                 { _id: '6', name: 'Chef d\'équipe' }
         ];
         setProfiles(mockProfiles);
     } catch (error) {
