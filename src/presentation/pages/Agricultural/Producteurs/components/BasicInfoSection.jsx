@@ -54,7 +54,7 @@ const BasicInfoSection = ({ formData, handleFormChange, menages, defaultExpanded
                   onChange={(e) => handleFormChange('IsExploitant', e.target.checked)}
                 />
               }
-              label="Q.15 Êtes-vous l'exploitant ? "
+              label="Q.16 Êtes-vous l'exploitant ? "
             />
           </Grid>
         </Grid>

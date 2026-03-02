@@ -55,7 +55,7 @@ const EditVoletPage = () => {
       setFormData({
         titre: volet.titre,
         ordre: volet.ordre,
-        questionnaireId: typeof volet.questionnaireId === 'object' ? volet.questionnaireId._id : volet.questionnaireId
+        questionnaireId: volet.questionnaireId && typeof volet.questionnaireId === 'object' ? volet.questionnaireId._id : volet.questionnaireId
       });
       setQuestionnaires(questionnairesData);
     } catch (err) {

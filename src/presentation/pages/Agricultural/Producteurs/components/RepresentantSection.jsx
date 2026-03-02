@@ -22,10 +22,32 @@ const RepresentantSection = ({
   formData, 
   handleFormChange, 
   pays, 
-  sousprefectures, 
-  niveauxScolaires, 
-  professions 
+  sousprefectures
 }) => {
+  const niveauxInstructionOptions = [
+    { value: 1, label: "N'est pas allé à l'école" },
+    { value: 2, label: "École coranique" },
+    { value: 3, label: "Primaire" },
+    { value: 4, label: "Secondaire" },
+    { value: 5, label: "Technique" },
+    { value: 6, label: "Professionnel" },
+    { value: 7, label: "Supérieur" },
+  ];
+
+  const professionsOptions = [
+    { value: 1, label: "Sans emploi" },
+    { value: 2, label: "Apprenant (Élève, Étudiant, apprenti, stagiaire)" },
+    { value: 3, label: "Salarié (secteur privé ou publique)" },
+    { value: 4, label: "Travailleur indépendant / Homme d'affaire" },
+    { value: 5, label: "Commerçant détaillant" },
+    { value: 6, label: "Commerçant grossiste" },
+    { value: 7, label: "Artisan (couture, coiffure, menuiserie, mécanique, artisanat, etc.)" },
+    { value: 8, label: "Agriculteur/paysan/ fermier / éleveur" },
+    { value: 9, label: "Ménagère" },
+    { value: 10, label: "Retraité/ pensionné/ rentier" },
+    { value: 11, label: "Ouvrier / Manœuvre" },
+  ];
+
   if (formData.IsExploitant) return null;
 
   return (
@@ -139,14 +161,14 @@ const RepresentantSection = ({
             <FormControl fullWidth>
               <InputLabel>Q.24 Niveau d'instruction</InputLabel>
               <Select
-                value={formData.NiveauScolaireRepresentant || ''}
-                onChange={(e) => handleFormChange('NiveauScolaireRepresentant', e.target.value)}
+                value={niveauxInstructionOptions.some((item) => item.value === Number(formData.NiveauScolaireRepresentant)) ? Number(formData.NiveauScolaireRepresentant) : ''}
+                onChange={(e) => handleFormChange('NiveauScolaireRepresentant', Number(e.target.value))}
                 displayEmpty
               >
                 <MenuItem value=""><em>Sélectionner...</em></MenuItem>
-                {niveauxScolaires.map(ns => (
-                  <MenuItem key={ns.id || ns._id} value={ns.id || ns._id}>
-                    {ns.Lib_niveauscolaire || ns.nom}
+                {niveauxInstructionOptions.map((item) => (
+                  <MenuItem key={item.value} value={item.value}>
+                    {item.label}
                   </MenuItem>
                 ))}
               </Select>
@@ -169,14 +191,14 @@ const RepresentantSection = ({
             <FormControl fullWidth>
               <InputLabel>Q.26 Profession</InputLabel>
               <Select
-                value={formData.ProfessionRepresentant || ''}
-                onChange={(e) => handleFormChange('ProfessionRepresentant', e.target.value)}
+                value={professionsOptions.some((item) => item.value === Number(formData.ProfessionRepresentant)) ? Number(formData.ProfessionRepresentant) : ''}
+                onChange={(e) => handleFormChange('ProfessionRepresentant', Number(e.target.value))}
                 displayEmpty
               >
                 <MenuItem value=""><em>Sélectionner...</em></MenuItem>
-                {professions.map(prof => (
-                  <MenuItem key={prof.id || prof._id} value={prof.id || prof._id}>
-                    {prof.Lib_profession || prof.nom}
+                {professionsOptions.map((item) => (
+                  <MenuItem key={item.value} value={item.value}>
+                    {item.label}
                   </MenuItem>
                 ))}
               </Select>
@@ -192,8 +214,8 @@ const RepresentantSection = ({
                 displayEmpty
               >
                 <MenuItem value=""><em>Sélectionner...</em></MenuItem>
-                <MenuItem value={1}>Ivoirienne</MenuItem>
-                <MenuItem value={2}>Étrangère</MenuItem>
+                <MenuItem value={1}>1. Ivoirienne</MenuItem>
+                <MenuItem value={2}>2. Non ivoirien</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -237,6 +259,34 @@ const RepresentantSection = ({
               placeholder="Ex: +225 xxxxxxxxx"
             />
           </Grid>
+          <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        required
+                        label="Q.31 Nom de l'exploitant"
+                        value={formData.NomExploitant || ''}
+                        onChange={(e) => handleFormChange('NomExploitant', e.target.value)}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        required
+                        label="Q.32 Prénom de l'exploitant"
+                        value={formData.PrenomExploitant || ''}
+                        onChange={(e) => handleFormChange('PrenomExploitant', e.target.value)}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                                <TextField
+                                  fullWidth
+                                  label="Q.33 Contact principal"
+                                  value={formData.ContactPrincipalExploitant || ''}
+                                  onChange={(e) => handleFormChange('ContactPrincipalExploitant', e.target.value)}
+                                  placeholder="Ex: +225 xxxxxxxxx"
+                                />
+                              </Grid>
         </Grid>
       </AccordionDetails>
     </Accordion>

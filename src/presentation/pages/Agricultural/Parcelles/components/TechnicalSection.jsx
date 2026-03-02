@@ -40,11 +40,10 @@ const TechnicalSection = ({ formData, handleFormChange }) => {
               fullWidth
               required
               type="number"
-              label="Q.117 Quelle est l'année de mise en place de la plantation ?  "
+              label="Q.121 Quelle est l'année de mise en place de la plantation ?  "
               value={formData.yearofcreationParcelle || ''}
               onChange={(e) => handleFormChange('yearofcreationParcelle', Number.parseInt(e.target.value) || 0)}
               inputProps={{ min: 1900, max: new Date().getFullYear() }}
-              helperText="Année de mise en place de la parcelle"
             />
           </Grid>
 
@@ -53,7 +52,7 @@ const TechnicalSection = ({ formData, handleFormChange }) => {
               fullWidth
               required
               type="number"
-              label="Q.118 Quelle est l'année d'entrée en production de la plantation ?"
+              label="Q.122 Quelle est l'année d'entrée en production de la plantation ?"
               value={formData.yearofProductionStart || ''}
               onChange={(e) => handleFormChange('yearofProductionStart', Number.parseInt(e.target.value) || 0)}
               inputProps={{ min: 1900, max: new Date().getFullYear() }}
@@ -64,7 +63,7 @@ const TechnicalSection = ({ formData, handleFormChange }) => {
             <TextField
               fullWidth
               type="number"
-              label="Q.119 Quelle est la superficie en production ? (ha)"
+              label="Q.123 Quelle est la superficie en production ? (ha)"
               value={formData.SuperficieProductive || 0}
               onChange={(e) => handleFormChange('SuperficieProductive', Number.parseFloat(e.target.value) || 0)}
               inputProps={{ min: 0, step: 0.01 }}
@@ -75,7 +74,7 @@ const TechnicalSection = ({ formData, handleFormChange }) => {
             <TextField
               fullWidth
               type="number"
-              label="Q.120 Quelle est la superficie non en production ? (ha)"
+              label="Q.124 Quelle est la superficie non en production ? (ha)"
               value={formData.SuperficieNonProductive || 0}
               onChange={(e) => handleFormChange('SuperficieNonProductive', Number.parseFloat(e.target.value) || 0)}
               inputProps={{ min: 0, step: 0.01 }}
@@ -84,11 +83,11 @@ const TechnicalSection = ({ formData, handleFormChange }) => {
 
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Q.121 Quel est le mode de faire valoir de votre exploitation ?</InputLabel>
+              <InputLabel>Q.125 Quel est le mode de faire valoir de votre exploitation ?</InputLabel>
               <Select
                 value={formData.TypeFaitValoirParcelle || ''}
                 onChange={(e) => handleFormChange('TypeFaitValoirParcelle', e.target.value)}
-                label="Q.121 Quel est le mode de faire valoir de votre exploitation ?"
+                label="Q.125 Quel est le mode de faire valoir de votre exploitation ?"
               >
                 <MenuItem value=""><em>Sélectionner...</em></MenuItem>
                 {faitValoirOptions.map((opt) => (
@@ -100,16 +99,7 @@ const TechnicalSection = ({ formData, handleFormChange }) => {
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Q.124 Combien de fois entretenez-vous votre exploitation par campagne ?"
-              value={formData.NombreEntretien || 0}
-              onChange={(e) => handleFormChange('NombreEntretien', Number.parseInt(e.target.value) || 0)}
-              inputProps={{ min: 0 }}
-            />
-          </Grid>
+
         </Grid>
       </AccordionDetails>
     </Accordion>

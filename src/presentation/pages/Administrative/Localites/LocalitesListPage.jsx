@@ -99,7 +99,7 @@ const LocalitesListPage = () => {
         const Cod_localite = l.Cod_localite || '';
         
         // Comparer les IDs correctement (string ou objet)
-        const localiteVillageId = typeof l.VillageId === 'object' ? (l.VillageId._id || l.VillageId.id) : l.VillageId;
+        const localiteVillageId = l.VillageId && typeof l.VillageId === 'object' ? (l.VillageId._id || l.VillageId.id) : l.VillageId;
         const villageMatch = !villageFilter || localiteVillageId === villageFilter;
         
         const searchMatch = !searchTerm || 
@@ -126,7 +126,7 @@ const LocalitesListPage = () => {
       setLoading(true);
       setError('');
       
-      const response = await localitesAPI.getAll({ limit: 2000 });
+      const response = await localitesAPI.getAll({ limit: 200000 });
       const data = response.data || response;
       const localitesData = data.items || data || [];
       
@@ -142,7 +142,7 @@ const LocalitesListPage = () => {
 
   const loadVillages = async () => {
     try {
-      const response = await villagesAPI.getAll({ limit: 2000 });
+      const response = await villagesAPI.getAll({ limit: 200000 });
       const data = response.data || response;
       const villagesData = data.items || data || [];
       setVillages(villagesData);
@@ -155,7 +155,7 @@ const LocalitesListPage = () => {
   const stats = {
     total: localites.length,
     villages: new Set(localites.map(l => {
-      const id = typeof l.VillageId === 'object' ? (l.VillageId._id || l.VillageId.id) : l.VillageId;
+      const id = l.VillageId && typeof l.VillageId === 'object' ? (l.VillageId._id || l.VillageId.id) : l.VillageId;
       return id;
     }).filter(Boolean)).size
   };
@@ -231,6 +231,13 @@ const LocalitesListPage = () => {
         throw new Error('Le fichier est vide.');
       }
 
+      const existingCodes = new Set(
+        localites
+          .map((l) => String(l.Cod_localite || '').trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const importedCodes = new Set();
+
       const mappedRows = rows.map((row, index) => {
         const normalizedRow = Object.entries(row).reduce((acc, [key, value]) => {
           acc[normalizeHeader(String(key))] = value;
@@ -241,6 +248,7 @@ const LocalitesListPage = () => {
         const codLocalite = String(normalizedRow.codlocalite || '').trim();
         const libVillage = String(normalizedRow.libvillage || '').trim();
         const villageId = String(normalizedRow.villageid || '').trim();
+        const codeKey = codLocalite.toLowerCase();
 
         const matchedVillage = libVillage
           ? villages.find((v) => normalizeName(v.Lib_village) === normalizeName(libVillage))
@@ -251,6 +259,9 @@ const LocalitesListPage = () => {
         if (!libLocalite || !codLocalite || !resolvedVillageId) {
           return { index, error: 'Lib_localite, Cod_localite et Lib_village sont obligatoires.' };
         }
+
+   
+        importedCodes.add(codeKey);
 
         if (libVillage && !matchedVillage) {
           return { index, error: `Village introuvable: ${libVillage}` };
@@ -284,7 +295,15 @@ const LocalitesListPage = () => {
           successCount += 1;
         } catch (error) {
           const message = error?.message || 'Erreur lors de la creation.';
-          errors.push(`Ligne ${row.index + 2}: ${message}`);
+          
+          // Log l'erreur mais continue l'importation
+          if (message.includes('Doublon détecté') || message.includes('existe déjà')) {
+            console.warn(`⚠️  Ligne ${row.index + 2}: Doublon ignoré - ${message}`);
+            errors.push(`Ligne ${row.index + 2}: [DOUBLON] ${message}`);
+          } else {
+            console.error(`❌ Ligne ${row.index + 2}: ${message}`);
+            errors.push(`Ligne ${row.index + 2}: ${message}`);
+          }
         }
       }
 
@@ -292,9 +311,15 @@ const LocalitesListPage = () => {
       setImportErrors(errors);
 
       if (errors.length) {
-        setImportError('Des erreurs sont survenues pendant l\'import.');
+        const duplicates = errors.filter(e => e.includes('[DOUBLON]')).length;
+        const otherErrors = errors.length - duplicates;
+        let message = '📊 Importation terminée avec des avertissements:\n';
+        if (successCount > 0) message += `✅ ${successCount} localité(s) créée(s)\n`;
+        if (duplicates > 0) message += `⚠️  ${duplicates} doublon(s) ignoré(s)\n`;
+        if (otherErrors > 0) message += `❌ ${otherErrors} erreur(s)`;
+        setImportError(message);
       } else {
-        setImportSuccess('Importation terminee avec succes.');
+        setImportSuccess(`✅ Importation terminée avec succès: ${successCount} localité(s) créée(s).`);
       }
 
       await loadData();
@@ -332,7 +357,7 @@ const LocalitesListPage = () => {
     setFormData({
       Lib_localite: localite.Lib_localite || '',
       Cod_localite: localite.Cod_localite || '',
-      VillageId: typeof localite.VillageId === 'object' ? (localite.VillageId._id || localite.VillageId.id) : localite.VillageId,
+      VillageId: localite.VillageId && typeof localite.VillageId === 'object' ? (localite.VillageId._id || localite.VillageId.id) : localite.VillageId,
     });
     setEditDialogOpen(true);
   };

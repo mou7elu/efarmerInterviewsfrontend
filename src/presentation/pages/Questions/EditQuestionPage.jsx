@@ -88,8 +88,8 @@ const EditQuestionPage = () => {
         // S'assurer que les IDs sont des chaînes et non des objets
         const formattedData = {
           ...questionData,
-          sectionId: typeof questionData.sectionId === 'object' ? questionData.sectionId?._id || '' : questionData.sectionId || '',
-          voletId: typeof questionData.voletId === 'object' ? questionData.voletId?._id || '' : questionData.voletId || '',
+          sectionId: questionData.sectionId && typeof questionData.sectionId === 'object' ? questionData.sectionId?._id || '' : questionData.sectionId || '',
+          voletId: questionData.voletId && typeof questionData.voletId === 'object' ? questionData.voletId?._id || '' : questionData.voletId || '',
           unite: questionData.unite || '',
           referenceTable: questionData.referenceTable || '',
           referenceField: questionData.referenceField || '',

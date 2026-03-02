@@ -87,11 +87,11 @@ const InfrastructureSection = ({ formData, handleFormChange }) => {
                 <FormControl fullWidth>
                   <InputLabel>Q.68 Quelles sont les machines agricoles utilisez-vous ?</InputLabel>
                   <Select
-                    value={formData.MachineAgricole || ''}
+                    multiple
+                    value={Array.isArray(formData.MachineAgricole) ? formData.MachineAgricole : []}
                     onChange={(e) => handleFormChange('MachineAgricole', e.target.value)}
                     displayEmpty
                   >
-                    <MenuItem value=""><em>Sélectionner...</em></MenuItem>
                     {machineAgricoleOptions.map((option) => (
                       <MenuItem key={option.value} value={option.value}>
                         {option.label}
@@ -101,7 +101,7 @@ const InfrastructureSection = ({ formData, handleFormChange }) => {
                 </FormControl>
               </Grid>
 
-              {formData.MachineAgricole === 6 && (
+              {Array.isArray(formData.MachineAgricole) && formData.MachineAgricole.includes(6) && (
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth

@@ -50,7 +50,9 @@ import {
   sousprefsAPI,
   secteursAdministratifsAPI,
   zonesdenombreAPI,
+  villagesAPI,
   localitesAPI,
+  districtAPI,
   handleApiError,
 } from '../../../../services/api.js';
 
@@ -78,11 +80,13 @@ const ParcellesListPage = () => {
   // États des données de référence
   const [menages, setMenages] = useState([]);
   const [producteurs, setProducteurs] = useState([]);
+  const [districts, setDistricts] = useState([]);
   const [regions, setRegions] = useState([]);
   const [departements, setDepartements] = useState([]);
   const [sousprefectures, setSousprefectures] = useState([]);
   const [secteursAdministratifs, setSecteursAdministratifs] = useState([]);
   const [zonedenombres, setZonedenombres] = useState([]);
+  const [villages, setVillages] = useState([]);
   const [localites, setLocalites] = useState([]);
 
   // État du formulaire
@@ -93,6 +97,7 @@ const ParcellesListPage = () => {
     Superficie: 0,
     Coordonnee: null,
     IsSameLocalitethanExploitant: true,
+    DistrictId: '',
     RegionId: '',
     DepartementId: '',
     SousprefId: '',
@@ -135,7 +140,7 @@ const ParcellesListPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await parcellesAPI.getAll({ limit: 1000 });
+      const data = await parcellesAPI.getAll({ limit: 10000000 });
       setParcelles(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {
@@ -148,34 +153,69 @@ const ParcellesListPage = () => {
 
   const loadReferenceData = async () => {
     try {
+      const asArray = (payload) => {
+        if (Array.isArray(payload)) return payload;
+        if (Array.isArray(payload?.data)) return payload.data;
+        return [];
+      };
+
       const [
         menagesData,
         producteursData,
+        districtsData,
         regionsData,
         departementsData,
         sousprefsData,
         secteursData,
         zonedenombresData,
+        villagesData,
         localitesData,
       ] = await Promise.all([
-        menagesAPI.getAll({ limit: 1000 }),
-        producteursAPI.getAll({ limit: 1000 }),
-        regionsAPI.getAll({ limit: 100 }),
-        departementsAPI.getAll({ limit: 200 }),
-        sousprefsAPI.getAll({ limit: 500 }),
-        secteursAdministratifsAPI.getAll({ limit: 500 }),
-        zonesdenombreAPI.getAll({ limit: 1000 }),
-        localitesAPI.getAll({ limit: 2000 }),
+        menagesAPI.getAll({ limit: 1000000 }),
+        producteursAPI.getAll({ limit: 1000000 }),
+        districtAPI.getAll({ limit: 100000 }),
+        regionsAPI.getAll({ limit: 1000000 }),
+        departementsAPI.getAll({ limit: 1000000 }),
+        sousprefsAPI.getAll({ limit: 1000000 }),
+        secteursAdministratifsAPI.getAll({ limit: 1000000 }),
+        zonesdenombreAPI.getAll({ limit: 1000000 }),
+        villagesAPI.getAll({ limit: 1000000 }),
+        localitesAPI.getAll({ limit: 1000000 }),
       ]);
 
-      setMenages(Array.isArray(menagesData) ? menagesData : (menagesData?.data || []));
-      setProducteurs(Array.isArray(producteursData) ? producteursData : []);
-      setRegions(Array.isArray(regionsData?.data) ? regionsData.data : []);
-      setDepartements(Array.isArray(departementsData?.data) ? departementsData.data : []);
-      setSousprefectures(Array.isArray(sousprefsData) ? sousprefsData : []);
-      setSecteursAdministratifs(Array.isArray(secteursData?.data) ? secteursData.data : []);
-      setZonedenombres(Array.isArray(zonedenombresData) ? zonedenombresData : []);
-      setLocalites(Array.isArray(localitesData) ? localitesData : []);
+      const menagesList = asArray(menagesData);
+      const producteursList = asArray(producteursData);
+      const districtsList = asArray(districtsData);
+      const regionsList = asArray(regionsData);
+      const departementsList = asArray(departementsData);
+      const sousprefsList = asArray(sousprefsData);
+      const secteursList = asArray(secteursData);
+      const zonedenombresList = asArray(zonedenombresData);
+      const villagesList = asArray(villagesData);
+      const localitesList = asArray(localitesData);
+
+      setMenages(menagesList);
+      setProducteurs(producteursList);
+      setDistricts(districtsList);
+      setRegions(regionsList);
+      setDepartements(departementsList);
+      setSousprefectures(sousprefsList);
+      setSecteursAdministratifs(secteursList);
+      setZonedenombres(zonedenombresList);
+      setVillages(villagesList);
+      setLocalites(localitesList);
+      
+      // DEBUG LOGS
+      console.log('=== REFERENCE DATA LOADED ===');
+      console.log('Districts:', districtsList.length);
+      console.log('Regions:', regionsList.length);
+      console.log('Departements:', departementsList.length);
+      console.log('Sousprefectures:', sousprefsList.length);
+      console.log('SecteursAdministratifs (raw data):', secteursData);
+      console.log('SecteursAdministratifs (normalized):', secteursList.length);
+      console.log('Zonedenombres:', zonedenombresList.length);
+      console.log('Villages:', villagesList.length);
+      console.log('Localites:', localitesList.length);
     } catch (err) {
       console.error('Erreur lors du chargement des données de référence:', err);
     }
@@ -194,14 +234,15 @@ const ParcellesListPage = () => {
     setSelectedParcelle(parcelle);
     setFormData({
       ...parcelle,
-      MenageId: typeof parcelle.MenageId === 'object' ? parcelle.MenageId._id : parcelle.MenageId,
-      ProducteurId: typeof parcelle.ProducteurId === 'object' ? parcelle.ProducteurId._id : parcelle.ProducteurId,
-      RegionId: typeof parcelle.RegionId === 'object' ? parcelle.RegionId._id : parcelle.RegionId,
-      DepartementId: typeof parcelle.DepartementId === 'object' ? parcelle.DepartementId._id : parcelle.DepartementId,
-      SousprefId: typeof parcelle.SousprefId === 'object' ? parcelle.SousprefId._id : parcelle.SousprefId,
-      SecteurAdministratifId: typeof parcelle.SecteurAdministratifId === 'object' ? parcelle.SecteurAdministratifId._id : parcelle.SecteurAdministratifId,
-      ZonedenombreId: typeof parcelle.ZonedenombreId === 'object' ? parcelle.ZonedenombreId._id : parcelle.ZonedenombreId,
-      LocaliteId: typeof parcelle.LocaliteId === 'object' ? parcelle.LocaliteId._id : parcelle.LocaliteId,
+      MenageId: parcelle.MenageId && typeof parcelle.MenageId === 'object' ? parcelle.MenageId._id : parcelle.MenageId,
+      ProducteurId: parcelle.ProducteurId && typeof parcelle.ProducteurId === 'object' ? parcelle.ProducteurId._id : parcelle.ProducteurId,
+      DistrictId: parcelle.DistrictId && typeof parcelle.DistrictId === 'object' ? parcelle.DistrictId._id : parcelle.DistrictId,
+      RegionId: parcelle.RegionId && typeof parcelle.RegionId === 'object' ? parcelle.RegionId._id : parcelle.RegionId,
+      DepartementId: parcelle.DepartementId && typeof parcelle.DepartementId === 'object' ? parcelle.DepartementId._id : parcelle.DepartementId,
+      SousprefId: parcelle.SousprefId && typeof parcelle.SousprefId === 'object' ? parcelle.SousprefId._id : parcelle.SousprefId,
+      SecteurAdministratifId: parcelle.SecteurAdministratifId && typeof parcelle.SecteurAdministratifId === 'object' ? parcelle.SecteurAdministratifId._id : parcelle.SecteurAdministratifId,
+      ZonedenombreId: parcelle.ZonedenombreId && typeof parcelle.ZonedenombreId === 'object' ? parcelle.ZonedenombreId._id : parcelle.ZonedenombreId,
+      LocaliteId: parcelle.LocaliteId && typeof parcelle.LocaliteId === 'object' ? parcelle.LocaliteId._id : parcelle.LocaliteId,
     });
     setEditDialogOpen(true);
   };
@@ -290,6 +331,19 @@ const ParcellesListPage = () => {
     rehabilitees: parcelles.filter((p) => p.HasParcelleRehabilitee).length,
   };
 
+  // Helper pour obtenir les infos du producteur
+  const getProducteurInfo = (producteurId) => {
+    if (!producteurId) return null;
+    
+    // Si c'est déjà un objet peuplé
+    if (typeof producteurId === 'object') {
+      return producteurId;
+    }
+    
+    // Sinon chercher dans la liste des producteurs
+    return producteurs.find(p => p._id === producteurId || p.id === producteurId);
+  };
+
   const renderFormDialog = (isEdit = false) => (
     <Dialog
       open={isEdit ? editDialogOpen : createDialogOpen}
@@ -307,11 +361,13 @@ const ParcellesListPage = () => {
           <LocationSection
             formData={formData}
             handleFormChange={handleFormChange}
+            districts={districts}
             regions={regions}
             departements={departements}
             sousprefectures={sousprefectures}
             secteursAdministratifs={secteursAdministratifs}
             zonedenombres={zonedenombres}
+            villages={villages}
             localites={localites}
           />
           <BasicInfoSection
@@ -441,11 +497,24 @@ const ParcellesListPage = () => {
                   <TableRow key={parcelle.id || parcelle._id}>
                     <TableCell>{parcelle.Code}</TableCell>
                     <TableCell>
-                      {parcelle.ProducteurId?.Code || '-'}
-                      <br />
-                      <Typography variant="caption" color="textSecondary">
-                        {parcelle.ProducteurId?.NomExploitant || parcelle.ProducteurId?.NomRepresentant || ''}
-                      </Typography>
+                      {(() => {
+                        const producteur = getProducteurInfo(parcelle.ProducteurId);
+                        const fullName = [
+                          producteur?.NomExploitant || producteur?.NomRepresentant || '',
+                          producteur?.PrenomExploitant || producteur?.PrenomRepresentant || ''
+                        ].filter(Boolean).join(' ');
+                        const contact = producteur?.ContactPrincipal || producteur?.Telephone || '';
+                        return (
+                          <>
+                            {producteur?.Code || '-'}
+                            <br />
+                            <Typography variant="caption" color="textSecondary">
+                              {fullName}
+                              {contact && ` • ${contact}`}
+                            </Typography>
+                          </>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>{parcelle.Superficie?.toFixed(2) || 0}</TableCell>
                     <TableCell>{parcelle.yearofcreationParcelle}</TableCell>

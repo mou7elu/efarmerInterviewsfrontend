@@ -245,6 +245,13 @@ const DistrictsListPage = () => {
         throw new Error('Le fichier est vide.');
       }
 
+      const existingCodes = new Set(
+        districts
+          .map((d) => String(d.Cod_district || '').trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const importedCodes = new Set();
+
       const mappedRows = rows.map((row, index) => {
         const normalizedRow = Object.entries(row).reduce((acc, [key, value]) => {
           acc[normalizeHeader(String(key))] = value;
@@ -255,6 +262,7 @@ const DistrictsListPage = () => {
         const codDistrict = String(normalizedRow.coddistrict || '').trim();
         const paysId = String(normalizedRow.paysid || defaultPaysId || '').trim();
         const sommeil = parseBoolean(normalizedRow.sommeil || false);
+        const codeKey = codDistrict.toLowerCase();
 
         if (!libDistrict || !codDistrict || !paysId) {
           return {
@@ -262,6 +270,15 @@ const DistrictsListPage = () => {
             error: 'Lib_district et Cod_district sont obligatoires.'
           };
         }
+
+        if (existingCodes.has(codeKey)) {
+          return { index, error: `Cod_district deja existant: ${codDistrict}` };
+        }
+
+        if (importedCodes.has(codeKey)) {
+          return { index, error: `Doublon Cod_district dans le fichier: ${codDistrict}` };
+        }
+        importedCodes.add(codeKey);
 
         return {
           index,
@@ -337,7 +354,7 @@ const DistrictsListPage = () => {
     setFormData({
       Lib_district: district.Lib_district || '',
       Cod_district: district.Cod_district || '',
-      PaysId: typeof district.PaysId === 'object' ? district.PaysId._id : district.PaysId,
+      PaysId: district.PaysId && typeof district.PaysId === 'object' ? district.PaysId._id : district.PaysId,
     });
     setEditDialogOpen(true);
   };

@@ -105,12 +105,13 @@ const ProducteursListPage = () => {
     GenreRepresentant: '',
     NiveauScolaireRepresentant: '',
     HasFormationAgricole: false,
+    HasCouvertureMaladie: false,
     ProfessionRepresentant: '',
     NatioliteRepresentant: '',
     PaysdorigineRepresentant: '',
     ContactPrincipalRepresentant: '',
     ContactSecondaireRepresentant: '',
-    
+    NumsecSocial: 0,
     // Exploitant
     NomExploitant: '',
     PrenomExploitant: '',
@@ -232,6 +233,12 @@ const ProducteursListPage = () => {
 
   const loadReferenceData = async () => {
     try {
+      const asArray = (payload) => {
+        if (Array.isArray(payload)) return payload;
+        if (Array.isArray(payload?.data)) return payload.data;
+        return [];
+      };
+
       const [menagesData, paysData, sousprefsData, niveauxData, professionsData, piecesData] =
         await Promise.all([
           menagesAPI.getAll({ limit: 1000 }),
@@ -242,12 +249,12 @@ const ProducteursListPage = () => {
           piecesAPI.getAll({ limit: 100 }),
         ]);
 
-      setMenages(Array.isArray(menagesData) ? menagesData : (menagesData?.data || []));
-      setPays(Array.isArray(paysData?.data) ? paysData.data : []);
-      setSousprefectures(Array.isArray(sousprefsData) ? sousprefsData : []);
-      setNiveauxScolaires(Array.isArray(niveauxData?.data) ? niveauxData.data : []);
-      setProfessions(Array.isArray(professionsData?.data) ? professionsData.data : []);
-      setPieces(Array.isArray(piecesData?.data) ? piecesData.data : []);
+      setMenages(asArray(menagesData));
+      setPays(asArray(paysData));
+      setSousprefectures(asArray(sousprefsData));
+      setNiveauxScolaires(asArray(niveauxData));
+      setProfessions(asArray(professionsData));
+      setPieces(asArray(piecesData));
     } catch (err) {
       console.error('Erreur lors du chargement des données de référence:', err);
     }
@@ -424,8 +431,6 @@ const ProducteursListPage = () => {
             handleFormChange={handleFormChange}
             pays={pays}
             sousprefectures={sousprefectures}
-            niveauxScolaires={niveauxScolaires}
-            professions={professions}
           />
 
           <ExploitantSection
@@ -433,9 +438,6 @@ const ProducteursListPage = () => {
             handleFormChange={handleFormChange}
             pays={pays}
             sousprefectures={sousprefectures}
-            niveauxScolaires={niveauxScolaires}
-            professions={professions}
-            pieces={pieces}
           />
 
           <MenageCompositionSection formData={formData} handleFormChange={handleFormChange} />

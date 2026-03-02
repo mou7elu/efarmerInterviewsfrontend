@@ -62,8 +62,6 @@ import {
   menagesAPI,
   paysAPI,
   sousprefsAPI,
-  niveauxScolairesAPI,
-  professionsAPI,
   piecesAPI,
   handleApiError 
 } from '../../../../services/api.js';
@@ -108,8 +106,6 @@ const ProducteursListPage = () => {
   const [menages, setMenages] = useState([]);
   const [pays, setPays] = useState([]);
   const [sousprefectures, setSousprefectures] = useState([]);
-  const [niveauxScolaires, setNiveauxScolaires] = useState([]);
-  const [professions, setProfessions] = useState([]);
   const [pieces, setPieces] = useState([]);
   
   // État pour le formulaire
@@ -184,7 +180,7 @@ const ProducteursListPage = () => {
     HasStockageBatimentAgricole: false,
     CapaciteStockageKg: 0,
     HasMachineAgricole: false,
-    MachineAgricole: 0,
+    MachineAgricole: [],
     PreciserMachineAgricole: '',
     EquipementSechageAgricole: 0,
     PreciserEquipementSechage: '',
@@ -244,32 +240,32 @@ const ProducteursListPage = () => {
 
   const loadData = async () => {
     try {
+      const asArray = (payload) => {
+        if (Array.isArray(payload)) return payload;
+        if (Array.isArray(payload?.data)) return payload.data;
+        return [];
+      };
+
       setLoading(true);
       const [
         producteursRes,
         menagesRes,
         paysRes,
         sousprefsRes,
-        niveauxRes,
-        professionsRes,
         piecesRes
       ] = await Promise.all([
         producteursAPI.getAll({ limit: 1000 }),
         menagesAPI.getAll({ limit: 1000 }),
         paysAPI.getAll({ limit: 100 }),
         sousprefsAPI.getAll({ limit: 1000 }),
-        niveauxScolairesAPI.getAll({ limit: 100 }),
-        professionsAPI.getAll({ limit: 100 }),
         piecesAPI.getAll({ limit: 100 })
       ]);
 
-      setProducteurs(Array.isArray(producteursRes) ? producteursRes : []);
-      setMenages(Array.isArray(menagesRes) ? menagesRes : []);
-      setPays(Array.isArray(paysRes) ? paysRes : (paysRes?.data || []));
-      setSousprefectures(Array.isArray(sousprefsRes) ? sousprefsRes : []);
-      setNiveauxScolaires(Array.isArray(niveauxRes) ? niveauxRes : []);
-      setProfessions(Array.isArray(professionsRes) ? professionsRes : []);
-      setPieces(Array.isArray(piecesRes) ? piecesRes : []);
+      setProducteurs(asArray(producteursRes));
+      setMenages(asArray(menagesRes));
+      setPays(asArray(paysRes));
+      setSousprefectures(asArray(sousprefsRes));
+      setPieces(asArray(piecesRes));
     } catch (err) {
       setError(handleApiError(err));
     } finally {
@@ -361,7 +357,7 @@ const ProducteursListPage = () => {
       HasStockageBatimentAgricole: false,
       CapaciteStockageKg: 0,
       HasMachineAgricole: false,
-      MachineAgricole: 0,
+      MachineAgricole: [],
       PreciserMachineAgricole: '',
       EquipementSechageAgricole: 0,
       PreciserEquipementSechage: '',

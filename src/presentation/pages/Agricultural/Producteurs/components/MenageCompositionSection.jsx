@@ -13,6 +13,7 @@ import {
 import { ExpandMore as ExpandMoreIcon, Home as HomeIcon } from '@mui/icons-material';
 
 const MenageCompositionSection = ({ formData, handleFormChange }) => {
+  if (!formData.IsExploitant) return null;
   return (
     <Accordion>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -23,7 +24,7 @@ const MenageCompositionSection = ({ formData, handleFormChange }) => {
       </AccordionSummary>
       <AccordionDetails>
         <Grid container spacing={2}>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={4}>
             <TextField
               fullWidth
               type="number"
@@ -34,7 +35,7 @@ const MenageCompositionSection = ({ formData, handleFormChange }) => {
             />
           </Grid>
           
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={4}>
             <TextField
               fullWidth
               type="number"
@@ -45,7 +46,7 @@ const MenageCompositionSection = ({ formData, handleFormChange }) => {
             />
           </Grid>
           
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={4}>
             <TextField
               fullWidth
               type="number"
@@ -65,7 +66,7 @@ const MenageCompositionSection = ({ formData, handleFormChange }) => {
               inputProps={{ min: 0 }}
             />
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={4}>
             <TextField
               fullWidth
               type="number"
@@ -75,7 +76,7 @@ const MenageCompositionSection = ({ formData, handleFormChange }) => {
               inputProps={{ min: 0 }}
             />
           </Grid>
-          
+          <Grid item xs={12} md={4}></Grid>
           
         </Grid>
       </AccordionDetails>

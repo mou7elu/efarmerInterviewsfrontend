@@ -181,6 +181,13 @@ const RegionsListPage = () => {
         throw new Error('Le fichier est vide.');
       }
 
+      const existingCodes = new Set(
+        regions
+          .map((r) => String(r.Cod_region || '').trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const importedCodes = new Set();
+
       const mappedRows = rows.map((row, index) => {
         const normalizedRow = Object.entries(row).reduce((acc, [key, value]) => {
           acc[normalizeHeader(String(key))] = value;
@@ -191,10 +198,20 @@ const RegionsListPage = () => {
         const codRegion = String(normalizedRow.codregion || '').trim();
         const districtId = String(normalizedRow.districtid || defaultDistrictId || '').trim();
         const coordonnee = parseCoordonnee(normalizedRow.coordonnee);
+        const codeKey = codRegion.toLowerCase();
 
         if (!libRegion || !codRegion || !districtId) {
           return { index, error: 'Lib_region et Cod_region sont obligatoires.' };
         }
+
+        if (existingCodes.has(codeKey)) {
+          return { index, error: `Cod_region deja existant: ${codRegion}` };
+        }
+
+        if (importedCodes.has(codeKey)) {
+          return { index, error: `Doublon Cod_region dans le fichier: ${codRegion}` };
+        }
+        importedCodes.add(codeKey);
 
         if (coordonnee && coordonnee.__parseError) {
           return { index, error: coordonnee.__parseError };
@@ -258,7 +275,7 @@ const RegionsListPage = () => {
     setFormData({
       Lib_region: region.Lib_region || '',
       Cod_region: region.Cod_region || '',
-      DistrictId: typeof region.DistrictId === 'object' ? region.DistrictId._id : region.DistrictId,
+      DistrictId: region.DistrictId && typeof region.DistrictId === 'object' ? region.DistrictId._id : region.DistrictId,
       Coordonnee: region.Coordonnee || null,
     });
     setEditDialogOpen(true);

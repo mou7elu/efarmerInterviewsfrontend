@@ -1,7 +1,7 @@
 /**
  * Section des informations de base de la parcelle
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Grid,
   FormControl,
@@ -17,6 +17,25 @@ import {
 import { ExpandMore as ExpandMoreIcon, Map as MapIcon } from '@mui/icons-material';
 
 const BasicInfoSection = ({ formData, handleFormChange, menages, producteurs, defaultExpanded = true }) => {
+  const [filteredProducteurs, setFilteredProducteurs] = useState([]);
+
+  // Filtrer les producteurs en fonction du ménage sélectionné
+  useEffect(() => {
+    if (formData.MenageId) {
+      const filtered = producteurs.filter(
+        (prod) => prod.MenageId === formData.MenageId || prod.MenageId?._id === formData.MenageId
+      );
+      setFilteredProducteurs(filtered);
+      // Réinitialiser le ProducteurId si le ménage change
+      if (!filtered.find((p) => p.id === formData.ProducteurId || p._id === formData.ProducteurId)) {
+        handleFormChange('ProducteurId', '');
+      }
+    } else {
+      setFilteredProducteurs([]);
+      handleFormChange('ProducteurId', '');
+    }
+  }, [formData.MenageId, producteurs]);
+
   return (
     <Accordion defaultExpanded={defaultExpanded}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -29,11 +48,11 @@ const BasicInfoSection = ({ formData, handleFormChange, menages, producteurs, de
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Ménage</InputLabel>
+              <InputLabel>Q.118 Ménage</InputLabel>
               <Select
                 value={formData.MenageId || ''}
                 onChange={(e) => handleFormChange('MenageId', e.target.value)}
-                label="Ménage"
+                label="Q.118 Ménage"
               >
                 <MenuItem value=""><em>Sélectionner...</em></MenuItem>
                 {menages.map((menage) => (
@@ -46,15 +65,15 @@ const BasicInfoSection = ({ formData, handleFormChange, menages, producteurs, de
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <FormControl fullWidth required>
-              <InputLabel>Q.115 Exploitant</InputLabel>
+            <FormControl fullWidth required disabled={!formData.MenageId}>
+              <InputLabel>Q.119 Exploitant</InputLabel>
               <Select
                 value={formData.ProducteurId || ''}
                 onChange={(e) => handleFormChange('ProducteurId', e.target.value)}
-                label="Q.115 Exploitant"
+                label="Q.119 Exploitant"
               >
                 <MenuItem value=""><em>Sélectionner...</em></MenuItem>
-                {producteurs.map((prod) => (
+                {filteredProducteurs.map((prod) => (
                   <MenuItem key={prod.id || prod._id} value={prod.id || prod._id}>
                     {prod.Code} - {prod.NomExploitant || prod.NomRepresentant} {prod.PrenomExploitant || prod.PrenomRepresentant}
                   </MenuItem>
@@ -66,19 +85,7 @@ const BasicInfoSection = ({ formData, handleFormChange, menages, producteurs, de
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
-              type="number"
-              label="Superficie (ha)"
-              value={formData.Superficie || 0}
-              onChange={(e) => handleFormChange('Superficie', Number.parseFloat(e.target.value) || 0)}
-              inputProps={{ min: 0, step: 0.01 }}
-              helperText="Superficie calculée selon les coordonnées GPS"
-            />
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Q.116 Code parcelle"
+              label="Q.120 Numéro exploitation (parcelle)"
               value={formData.Code || ''}
               onChange={(e) => handleFormChange('Code', e.target.value)}
               helperText="Auto-généré côté serveur si vide"

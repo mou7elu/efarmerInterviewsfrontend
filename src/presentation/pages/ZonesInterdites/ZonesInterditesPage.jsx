@@ -88,7 +88,7 @@ const ZonesInterditesPage = () => {
         const Lib_zi = z.Lib_zi || '';
         
         // Comparer les IDs correctement (string ou objet)
-        const zonePaysId = typeof z.PaysId === 'object' ? (z.PaysId._id || z.PaysId.id) : z.PaysId;
+        const zonePaysId = z.PaysId && typeof z.PaysId === 'object' ? (z.PaysId._id || z.PaysId.id) : z.PaysId;
         const paysMatch = !paysFilter || zonePaysId === paysFilter;
         
         const sommeilMatch = !sommeilFilter || z.Sommeil.toString() === sommeilFilter;
@@ -139,7 +139,7 @@ const ZonesInterditesPage = () => {
     actives: zonesInterdites.filter(z => !z.Sommeil).length,
     sommeil: zonesInterdites.filter(z => z.Sommeil).length,
     pays: new Set(zonesInterdites.map(z => {
-      const id = typeof z.PaysId === 'object' ? (z.PaysId._id || z.PaysId.id) : z.PaysId;
+      const id = z.PaysId && typeof z.PaysId === 'object' ? (z.PaysId._id || z.PaysId.id) : z.PaysId;
       return id;
     }).filter(Boolean)).size
   };
@@ -180,7 +180,7 @@ const ZonesInterditesPage = () => {
       Lib_zi: zone.Lib_zi || '',
       Coordonnee: zone.Coordonnee || null,
       Sommeil: zone.Sommeil || false,
-      PaysId: typeof zone.PaysId === 'object' ? (zone.PaysId._id || zone.PaysId.id) : zone.PaysId,
+      PaysId: zone.PaysId && typeof zone.PaysId === 'object' ? (zone.PaysId._id || zone.PaysId.id) : zone.PaysId,
     });
     setEditDialogOpen(true);
   };

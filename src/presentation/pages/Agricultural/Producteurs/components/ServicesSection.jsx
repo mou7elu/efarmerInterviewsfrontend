@@ -428,6 +428,39 @@ const ServicesSection = ({ formData, handleFormChange }) => {
               </FormControl>
             </Grid>
           )}
+          {/* Couverture maladie */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" color="primary" gutterBottom sx={{ mt: 2 }}>
+              <AccountBalanceIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'middle' }} />
+              Couverture maladie
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formData.HasCouvertureMaladie || false}
+                      onChange={(e) => handleFormChange('HasCouvertureMaladie', e.target.checked)}
+                    />
+                  }
+                  label="Q.87a Bénéficiez-vous de la Couverture Maladie Universelle ?  "
+                />
+              </Grid>
+              {formData.HasCouvertureMaladie && (
+                <>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Q.87b Quel est votre numéro de sécurité sociale ?"
+                      value={formData.NumsecSocial || 0}
+                      onChange={(e) => handleFormChange('NumsecSocial', Number.parseInt(e.target.value) || 0)}
+                      inputProps={{ min: 0 }}
+                    />
+                  </Grid>
+                </>
+              )}
         </Grid>
       </AccordionDetails>
     </Accordion>

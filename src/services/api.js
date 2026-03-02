@@ -39,10 +39,11 @@ export const apiCall = async (url, options = {}) => {
     
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Erreur réseau' }));
+      const backendMessage = error?.message || error?.error;
       
       // Si c'est une erreur 401 (Token invalide), nettoyer le token
       if (response.status === 401) {
-        const errorMessage = error.message || '';
+        const errorMessage = backendMessage || '';
         
         // Détecter les erreurs de signature JWT
         if (errorMessage.includes('Token invalide') || errorMessage.includes('invalide') || errorMessage.includes('manquant')) {
@@ -60,7 +61,7 @@ export const apiCall = async (url, options = {}) => {
         }
       }
       
-      throw new Error(error.message || `Erreur HTTP ${response.status}`);
+      throw new Error(backendMessage || `Erreur HTTP ${response.status}`);
     }
 
     const contentType = response.headers.get('content-type');

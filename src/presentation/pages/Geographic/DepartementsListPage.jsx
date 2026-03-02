@@ -209,7 +209,7 @@ const DepartementsListPage = () => {
     setSelectedDepartement(departement);
     setFormData({
       libDepartement: getValue(departement.Lib_Departement) || getValue(departement.libDepartement) || getValue(departement.nom),
-      regionId: typeof departement.RegionId === 'object' ? departement.RegionId._id : departement.RegionId,
+      regionId: departement.RegionId && typeof departement.RegionId === 'object' ? departement.RegionId._id : departement.RegionId,
       sommeil: departement.sommeil || departement.Sommeil || false
     });
     setEditDialogOpen(true);
@@ -334,7 +334,7 @@ const DepartementsListPage = () => {
             <Card>
               <CardContent sx={{ textAlign: 'center', py: 2 }}>
                 <Typography variant="h4" color="warning.main">
-                  {new Set(departements.map(d => typeof d.RegionId === 'object' ? d.RegionId._id : d.RegionId).filter(Boolean)).size}
+                  {new Set(departements.map(d => d.RegionId && typeof d.RegionId === 'object' ? d.RegionId._id : d.RegionId).filter(Boolean)).size}
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
                   Régions couvertes

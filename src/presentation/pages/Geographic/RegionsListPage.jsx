@@ -233,7 +233,7 @@ const RegionsListPage = () => {
     setFormData({
       libRegion: getValue(region.Lib_region) || getValue(region.libRegion) || getValue(region.nom),
       coordonnee: getValue(region.Coordonnee) || '',
-      districtId: typeof region.DistrictId === 'object' ? region.DistrictId._id : region.DistrictId,
+      districtId: region.DistrictId && typeof region.DistrictId === 'object' ? region.DistrictId._id : region.DistrictId,
       sommeil: region.sommeil || region.Sommeil || false
     });
     setEditDialogOpen(true);
@@ -360,7 +360,7 @@ const RegionsListPage = () => {
             <Card>
               <CardContent sx={{ textAlign: 'center', py: 2 }}>
                 <Typography variant="h4" color="warning.main">
-                  {new Set(regions.map(r => typeof r.DistrictId === 'object' ? r.DistrictId._id : r.DistrictId).filter(Boolean)).size}
+                  {new Set(regions.map(r => r.DistrictId && typeof r.DistrictId === 'object' ? r.DistrictId._id : r.DistrictId).filter(Boolean)).size}
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
                   Districts couverts

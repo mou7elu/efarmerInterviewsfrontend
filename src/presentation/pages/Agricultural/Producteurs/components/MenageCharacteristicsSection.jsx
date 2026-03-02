@@ -104,6 +104,8 @@ const MenageCharacteristicsSection = ({ formData, handleFormChange }) => {
     { value: 6, label: 'Charrette' },
   ];
 
+  if (!formData.IsExploitant) return null;
+
   return (
     <Accordion>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>

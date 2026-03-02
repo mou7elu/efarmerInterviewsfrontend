@@ -97,7 +97,7 @@ const ZonesListPage = () => {
         const Cod_ZD = z.Cod_ZD || '';
         
         // Comparer les IDs correctement (string ou objet)
-        const zoneSecteurId = typeof z.SecteurAdministratifId === 'object' ? (z.SecteurAdministratifId._id || z.SecteurAdministratifId.id) : z.SecteurAdministratifId;
+        const zoneSecteurId = z.SecteurAdministratifId && typeof z.SecteurAdministratifId === 'object' ? (z.SecteurAdministratifId._id || z.SecteurAdministratifId.id) : z.SecteurAdministratifId;
         const secteurMatch = !secteurFilter || zoneSecteurId === secteurFilter;
         
         const searchMatch = !searchTerm || 
@@ -124,7 +124,7 @@ const ZonesListPage = () => {
       setLoading(true);
       setError('');
       
-      const response = await zonesdenombreAPI.getAll({ limit: 100 });
+      const response = await zonesdenombreAPI.getAll({ limit: 10000 });
       const data = response.data || response;
       const zonesData = data.items || data || [];
       
@@ -140,7 +140,7 @@ const ZonesListPage = () => {
 
   const loadSecteurs = async () => {
     try {
-      const response = await secteursAdministratifsAPI.getAll({ limit: 100 });
+      const response = await secteursAdministratifsAPI.getAll({ limit: 10000 });
       const data = response.data || response;
       const secteursData = data.items || data || [];
       setSecteurs(secteursData);
@@ -220,6 +220,13 @@ const ZonesListPage = () => {
         throw new Error('Le fichier est vide.');
       }
 
+      const existingCodes = new Set(
+        zones
+          .map((z) => String(z.Cod_ZD || '').trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const importedCodes = new Set();
+
       const mappedRows = rows.map((row, index) => {
         const normalizedRow = Object.entries(row).reduce((acc, [key, value]) => {
           acc[normalizeHeader(String(key))] = value;
@@ -230,6 +237,7 @@ const ZonesListPage = () => {
         const codZd = String(normalizedRow.codzd || '').trim();
         const libSecteur = String(normalizedRow.libsecteuradministratif || '').trim();
         const secteurId = String(normalizedRow.secteuradministratifid || '').trim();
+        const codeKey = codZd.toLowerCase();
 
         const matchedSecteur = libSecteur
           ? secteurs.find((s) => normalizeName(s.Lib_SecteurAdministratif) === normalizeName(libSecteur))
@@ -240,6 +248,9 @@ const ZonesListPage = () => {
         if (!libZd || !codZd || !resolvedSecteurId) {
           return { index, error: 'Lib_ZD, Cod_ZD et Lib_SecteurAdministratif sont obligatoires.' };
         }
+
+     
+        importedCodes.add(codeKey);
 
         if (libSecteur && !matchedSecteur) {
           return { index, error: `Secteur introuvable: ${libSecteur}` };
@@ -321,7 +332,7 @@ const ZonesListPage = () => {
     setFormData({
       Lib_ZD: zone.Lib_ZD || '',
       Cod_ZD: zone.Cod_ZD || '',
-      SecteurAdministratifId: typeof zone.SecteurAdministratifId === 'object' ? (zone.SecteurAdministratifId._id || zone.SecteurAdministratifId.id) : zone.SecteurAdministratifId,
+      SecteurAdministratifId: zone.SecteurAdministratifId && typeof zone.SecteurAdministratifId === 'object' ? (zone.SecteurAdministratifId._id || zone.SecteurAdministratifId.id) : zone.SecteurAdministratifId,
     });
     setEditDialogOpen(true);
   };

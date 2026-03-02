@@ -52,7 +52,7 @@ const MainOeuvreArrayManager = ({ items, onChange }) => {
     <Box sx={{ mt: 2, mb: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="subtitle1" fontWeight="bold">
-          Quel(s) type(s) de main d'œuvre utilisez-vous ?  
+          Q.141 Quel(s) type(s) de main d'œuvre utilisez-vous ?  
 Pour la fréquence, inscrire (1, 2 ou 3) : 
 
 1. Ponctuelle (de 1 à 3 

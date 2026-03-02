@@ -53,7 +53,7 @@ const DepensesArrayManager = ({ items, onChange }) => {
     <Box sx={{ mt: 2, mb: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="subtitle1" fontWeight="bold">
-          Quelles sont vos dépenses de la dernière campagne pour votre exploitation ?  
+          Q.137 Quelles sont vos dépenses de la dernière campagne pour votre exploitation ?  
         </Typography>
         <Button
           size="small"

@@ -97,7 +97,7 @@ const SecteursListPage = () => {
         const Cod_SecteurAdministratif = s.Cod_SecteurAdministratif || '';
         
         // Comparer les IDs correctement (string ou objet)
-        const secteurSousprefId = typeof s.SousprefId === 'object' ? (s.SousprefId._id || s.SousprefId.id) : s.SousprefId;
+        const secteurSousprefId = s.SousprefId && typeof s.SousprefId === 'object' ? (s.SousprefId._id || s.SousprefId.id) : s.SousprefId;
         const sousprefMatch = !sousprefFilter || secteurSousprefId === sousprefFilter;
         
         const searchMatch = !searchTerm || 
@@ -140,7 +140,7 @@ const SecteursListPage = () => {
 
   const loadSousprefs = async () => {
     try {
-      const response = await sousprefsAPI.getAll({ limit: 100 });
+      const response = await sousprefsAPI.getAll({ limit: 1000 });
       const data = response.data || response;
       const sousprefsData = data.items || data || [];
       setSousprefs(sousprefsData);
@@ -220,6 +220,13 @@ const SecteursListPage = () => {
         throw new Error('Le fichier est vide.');
       }
 
+      const existingCodes = new Set(
+        secteurs
+          .map((s) => String(s.Cod_SecteurAdministratif || '').trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const importedCodes = new Set();
+
       const mappedRows = rows.map((row, index) => {
         const normalizedRow = Object.entries(row).reduce((acc, [key, value]) => {
           acc[normalizeHeader(String(key))] = value;
@@ -228,21 +235,42 @@ const SecteursListPage = () => {
 
         const libSecteur = String(normalizedRow.libsecteuradministratif || '').trim();
         const codSecteur = String(normalizedRow.codsecteuradministratif || '').trim();
-        const libSouspref = String(normalizedRow.libsouspref || '').trim();
+        const libSouspref = String(
+          normalizedRow.libsouspref
+          || normalizedRow.souspref
+          || normalizedRow.libellesouspref
+          || ''
+        ).trim();
+        const codSouspref = String(normalizedRow.codsouspref || normalizedRow.codesouspref || '').trim();
         const sousprefId = String(normalizedRow.sousprefid || '').trim();
+        const codeKey = codSecteur.toLowerCase();
 
-        const matchedSouspref = libSouspref
+        const matchedSousprefByLib = libSouspref
           ? sousprefs.find((s) => normalizeName(s.Lib_Souspref) === normalizeName(libSouspref))
           : null;
+        const matchedSousprefByCode = codSouspref
+          ? sousprefs.find((s) => String(s.Cod_Souspref || '').trim().toLowerCase() === codSouspref.toLowerCase())
+          : null;
+        const matchedSouspref = matchedSousprefByLib || matchedSousprefByCode;
         const resolvedSousprefId = sousprefId
           || (matchedSouspref ? (matchedSouspref._id || matchedSouspref.id) : '');
 
-        if (!libSecteur || !codSecteur || !resolvedSousprefId) {
-          return { index, error: 'Lib_SecteurAdministratif, Cod_SecteurAdministratif et Lib_Souspref sont obligatoires.' };
+        if (!libSecteur || !codSecteur) {
+          return { index, error: 'Lib_SecteurAdministratif et Cod_SecteurAdministratif sont obligatoires.' };
         }
 
-        if (libSouspref && !matchedSouspref) {
-          return { index, error: `Sous-prefecture introuvable: ${libSouspref}` };
+        if (existingCodes.has(codeKey)) {
+          return { index, error: `Cod_SecteurAdministratif deja existant: ${codSecteur}` };
+        }
+
+
+        importedCodes.add(codeKey);
+
+        if (!resolvedSousprefId) {
+          if (libSouspref || codSouspref) {
+            return { index, error: `Sous-prefecture introuvable: ${libSouspref || codSouspref}` };
+          }
+          return { index, error: 'Lib_Souspref, Cod_Souspref ou SousprefId est obligatoire.' };
         }
 
         return {
@@ -321,7 +349,7 @@ const SecteursListPage = () => {
     setFormData({
       Lib_SecteurAdministratif: secteur.Lib_SecteurAdministratif || '',
       Cod_SecteurAdministratif: secteur.Cod_SecteurAdministratif || '',
-      SousprefId: typeof secteur.SousprefId === 'object' ? (secteur.SousprefId._id || secteur.SousprefId.id) : secteur.SousprefId,
+      SousprefId: secteur.SousprefId && typeof secteur.SousprefId === 'object' ? (secteur.SousprefId._id || secteur.SousprefId.id) : secteur.SousprefId,
     });
     setEditDialogOpen(true);
   };

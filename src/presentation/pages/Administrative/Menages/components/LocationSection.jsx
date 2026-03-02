@@ -185,11 +185,11 @@ const LocationSection = ({
           {/* Village (Localité) */}
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Q.12 Localité(village)</InputLabel>
+              <InputLabel>Q.12 Localité</InputLabel>
               <Select
                 value={safeSelectValue(villages, formData.VillageId)}
                 onChange={(e) => handleFormChange('VillageId', e.target.value)}
-                label="Q.12 Localité(village)"
+                label="Q.12 Localité"
                 disabled={!formData.ZonedenombreId}
               >
                 <MenuItem value="">
@@ -204,46 +204,7 @@ const LocationSection = ({
             </FormControl>
           </Grid>
 
-          {/* Localité (Quartier/Campement) */}
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth required>
-              <InputLabel>Q.13 Quartier / Campement</InputLabel>
-              <Select
-                value={safeSelectValue(localites, formData.LocaliteId)}
-                onChange={(e) => handleFormChange('LocaliteId', e.target.value)}
-                label="Q.13 Quartier / Campement"
-                disabled={!formData.VillageId}
-              >
-                <MenuItem value="">
-                  <em>Sélectionner un quartier/campement</em>
-                </MenuItem>
-                {localites.map((l) => (
-                  <MenuItem key={l._id || l.id} value={l._id || l.id}>
-                    {l.Lib_localite || l.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-
-          {/* Milieu de résidence */}
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth required>
-              <InputLabel>Q.14 Milieu de résidence</InputLabel>
-              <Select
-                value={formData.MilieuResidence || 0}
-                onChange={(e) => handleFormChange('MilieuResidence', Number(e.target.value))}
-                label="Q.14 Milieu de résidence"
-              >
-                <MenuItem value={0}>
-                  <em>Sélectionner le milieu</em>
-                </MenuItem>
-                <MenuItem value={1}>Urbain</MenuItem>
-                <MenuItem value={2}>Semi-urbain</MenuItem>
-                <MenuItem value={3}>Rural</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+          
 
           {/* Coordonnées GPS */}
           <Grid item xs={12}>

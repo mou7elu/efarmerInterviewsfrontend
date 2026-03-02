@@ -29,7 +29,7 @@ const BasicInfoSection = ({ formData, handleFormChange }) => {
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
-              label="Code Ménage"
+              label="Q13. Numéro ménage "
               value={formData.Cod_menage || ''}
               disabled
               helperText="Auto-généré lors de la création"

@@ -76,7 +76,7 @@ const ProductionSection = ({ formData, handleFormChange }) => {
             <TextField
               fullWidth
               type="number"
-              label="Tonnage récolté (tonnes)"
+              label="Q.126 Quelle est votre production d’anacarde de la dernière campagne ?  (tonnes)"
               value={formData.TonnageLastYear || 0}
               onChange={(e) => handleFormChange('TonnageLastYear', Number.parseFloat(e.target.value) || 0)}
               inputProps={{ min: 0, step: 0.01 }}
@@ -87,13 +87,22 @@ const ProductionSection = ({ formData, handleFormChange }) => {
             <TextField
               fullWidth
               type="number"
-              label="Prix de vente/Kg (FCFA)"
+              label="Q.127 À combien avez-vous vendu le kg d’anacarde à la dernière campagne ? (FCFA)"
               value={formData.PrixVenteLastYear || 0}
               onChange={(e) => handleFormChange('PrixVenteLastYear', Number.parseInt(e.target.value) || 0)}
               inputProps={{ min: 0 }}
             />
           </Grid>
-
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              type="number"
+              label="Q.128 Combien de fois entretenez-vous votre exploitation par campagne ?"
+              value={formData.NombreEntretien || 0}
+              onChange={(e) => handleFormChange('NombreEntretien', Number.parseInt(e.target.value) || 0)}
+              inputProps={{ min: 0 }}
+            />
+          </Grid>
           <Grid item xs={12}>
             <Divider sx={{ my: 2 }} />
             <Typography variant="subtitle1" color="primary" gutterBottom>
@@ -104,12 +113,12 @@ const ProductionSection = ({ formData, handleFormChange }) => {
           {/* Provenance des plants */}
           <Grid item xs={12}>
             <FormControl fullWidth>
-              <InputLabel>Quel est la provenance du matériel végétal utilisé ? (Question à Choix multiple) </InputLabel>
+              <InputLabel>Q.129 Quel est la provenance du matériel végétal utilisé ? (Question à Choix multiple) </InputLabel>
               <Select
                 multiple
                 value={formData.ProvenanceDesPlants || []}
                 onChange={(e) => handleFormChange('ProvenanceDesPlants', e.target.value)}
-                input={<OutlinedInput label="Provenance du matériel végétal" />}
+                input={<OutlinedInput label="Q.129 Quel est la provenance du matériel végétal utilisé ? (Question à Choix multiple)" />}
                 renderValue={(selected) => (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                     {selected.map((value) => (
@@ -140,7 +149,7 @@ const ProductionSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasCertificationProgramme', e.target.checked)}
                 />
               }
-              label="Etes-vous dans un programme de certification ? "
+              label="Q.130 Etes-vous dans un programme de certification ? "
             />
           </Grid>
 
@@ -152,18 +161,18 @@ const ProductionSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasRecoursServicesConseils', e.target.checked)}
                 />
               }
-              label="Avez-vous recours aux services de conseils agricoles ?"
+              label="Q.131 Avez-vous recours aux services de conseils agricoles ?"
             />
           </Grid>
 
           {formData.HasRecoursServicesConseils && (
             <Grid item xs={12}>
               <FormControl fullWidth>
-                <InputLabel>A quels services avez-vous recours ?</InputLabel>
+                <InputLabel>Q.132 A quels services avez-vous recours ?</InputLabel>
                 <Select
                   value={formData.RecoursServices || ''}
                   onChange={(e) => handleFormChange('RecoursServices', e.target.value)}
-                  label="A quels services avez-vous recours ?"
+                  label="Q.132 A quels services avez-vous recours ?"
                 >
                   <MenuItem value=""><em>Sélectionner...</em></MenuItem>
                   {recoursServicesOptions.map((opt) => (
@@ -185,7 +194,7 @@ const ProductionSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasParcelleRehabilitee', e.target.checked)}
                 />
               }
-              label="Votre parcelle a-t-elle été réhabilitée ?"
+              label="Q.133 Votre parcelle a-t-elle été réhabilitée ?"
             />
           </Grid>
 
@@ -194,7 +203,7 @@ const ProductionSection = ({ formData, handleFormChange }) => {
               <TextField
                 fullWidth
                 type="number"
-                label="Quelle superficie (ha) est concernée par cette réhabilitation ? "
+                label="Q.134 Quelle superficie (ha) est concernée par cette réhabilitation ? "
                 value={formData.SuperficieRehabilitee || 0}
                 onChange={(e) => handleFormChange('SuperficieRehabilitee', Number.parseFloat(e.target.value) || 0)}
                 inputProps={{ min: 0, step: 0.01 }}
@@ -218,7 +227,7 @@ const ProductionSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasUseEngrais', e.target.checked)}
                 />
               }
-              label="Avez-vous utilisé de l'engrais ces deux dernières années ? "
+              label="Q.135 Avez-vous utilisé de l'engrais ces deux dernières années ? "
             />
           </Grid>
 
@@ -230,7 +239,7 @@ const ProductionSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasUsePhytosanitaire', e.target.checked)}
                 />
               }
-              label="Avez-vous effectué des traitements phytosanitaires sur votre exploitation d'anacarde ces deux dernières années ?"
+              label="Q.136 Avez-vous effectué des traitements phytosanitaires sur votre exploitation d'anacarde ces deux dernières années ?"
             />
           </Grid>
 
@@ -259,19 +268,19 @@ const ProductionSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasAssociationCulturelle', e.target.checked)}
                 />
               }
-              label="Pratiquez-vous une association culturelle ?"
+              label="Q.138 Pratiquez-vous une association culturelle ?"
             />
           </Grid>
 
           {formData.HasAssociationCulturelle && (
             <Grid item xs={12}>
               <FormControl fullWidth>
-                <InputLabel>Quelle (s) culture (s) associez-vous à l'anacarde ? (Question à Choix multiple)</InputLabel>
+                <InputLabel>Q.139 Quelle (s) culture (s) associez-vous à l'anacarde ? (Question à Choix multiple)</InputLabel>
                 <Select
                   multiple
                   value={formData.AssociationCulturelle || []}
                   onChange={(e) => handleFormChange('AssociationCulturelle', e.target.value)}
-                  input={<OutlinedInput label="Types de cultures associées" />}
+                  input={<OutlinedInput label="Q.139 Types de cultures associées" />}
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map((value) => (
@@ -302,7 +311,7 @@ const ProductionSection = ({ formData, handleFormChange }) => {
                   onChange={(e) => handleFormChange('HasAnarcadePrincipaleCulture', e.target.checked)}
                 />
               }
-              label="L'anacarde est-elle votre culture principale dans cette association ?"
+              label="Q.140 L'anacarde est-elle votre culture principale dans cette association ?"
             />
           </Grid>
 
@@ -319,7 +328,7 @@ const ProductionSection = ({ formData, handleFormChange }) => {
             <TextField
               fullWidth
               type="number"
-              label="Quel salaire payez-vous à la main d'oeuvre permanente de votre exploitation ? (FCFA)"
+              label="Q.142 Quel salaire payez-vous à la main d'oeuvre permanente de votre exploitation ? (FCFA)"
               value={formData.SalaireMainOeuvre || 0}
               onChange={(e) => handleFormChange('SalaireMainOeuvre', Number.parseInt(e.target.value) || 0)}
               inputProps={{ min: 0 }}

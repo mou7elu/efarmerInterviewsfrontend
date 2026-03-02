@@ -21,7 +21,6 @@ const DepartementsListPage = () => {
   const [importSuccess, setImportSuccess] = useState('');
   const [importStats, setImportStats] = useState(null);
   const [importErrors, setImportErrors] = useState([]);
-  const [defaultRegionId, setDefaultRegionId] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,12 +32,6 @@ const DepartementsListPage = () => {
   const [formData, setFormData] = useState({ Lib_Departement: '', Cod_departement: '', RegionId: '' });
 
   useEffect(() => { loadData(); loadRegions(); }, []);
-
-  useEffect(() => {
-    if (!defaultRegionId && regions.length > 0) {
-      setDefaultRegionId(regions[0]?._id || regions[0]?.id || '');
-    }
-  }, [regions, defaultRegionId]);
   useEffect(() => {
     if (!searchTerm && !regionFilter) {
       setFilteredDepartements(departements);
@@ -56,6 +49,12 @@ const DepartementsListPage = () => {
   }, [departements, searchTerm, regionFilter]);
 
   const normalizeHeader = (header) => header.toLowerCase().replace(/\s+/g, '').replace(/_/g, '');
+  const normalizeName = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/'/g, '');
 
   const loadData = async () => {
     try {
@@ -91,8 +90,8 @@ const DepartementsListPage = () => {
   const resetForm = () => setFormData({ Lib_Departement: '', Cod_departement: '', RegionId: '' });
 
   const handleDownloadTemplate = () => {
-    const headers = ['Lib_Departement', 'Cod_departement'];
-    const example = ['EXEMPLE_LIB', 'EXEMPLE_CODE'];
+    const headers = ['Lib_Departement', 'Cod_departement', 'Lib_region'];
+    const example = ['EXEMPLE_LIB', 'EXEMPLE_CODE', 'NOM_REGION'];
     const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
     const workbook = XLSX.utils.book_new();
 
@@ -129,11 +128,6 @@ const DepartementsListPage = () => {
       return;
     }
 
-    if (!defaultRegionId) {
-      setImportError('Veuillez selectionner une region par defaut.');
-      return;
-    }
-
     setImportIsLoading(true);
     setImportError('');
     setImportSuccess('');
@@ -157,6 +151,13 @@ const DepartementsListPage = () => {
         throw new Error('Le fichier est vide.');
       }
 
+      const existingCodes = new Set(
+        departements
+          .map((d) => String(d.Cod_departement || '').trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const importedCodes = new Set();
+
       const mappedRows = rows.map((row, index) => {
         const normalizedRow = Object.entries(row).reduce((acc, [key, value]) => {
           acc[normalizeHeader(String(key))] = value;
@@ -165,10 +166,35 @@ const DepartementsListPage = () => {
 
         const libDepartement = String(normalizedRow.libdepartement || '').trim();
         const codDepartement = String(normalizedRow.coddepartement || '').trim();
-        const regionId = String(normalizedRow.regionid || defaultRegionId || '').trim();
+        const libRegion = String(normalizedRow.regionid || normalizedRow.libregion || normalizedRow.region || '').trim();
+        const codeKey = codDepartement.toLowerCase();
 
-        if (!libDepartement || !codDepartement || !regionId) {
+        if (!libDepartement || !codDepartement) {
           return { index, error: 'Lib_Departement et Cod_departement sont obligatoires.' };
+        }
+
+        if (existingCodes.has(codeKey)) {
+          return { index, error: `Cod_departement deja existant: ${codDepartement}` };
+        }
+
+        if (importedCodes.has(codeKey)) {
+          return { index, error: `Doublon Cod_departement dans le fichier: ${codDepartement}` };
+        }
+        importedCodes.add(codeKey);
+
+        // Chercher la région par son libellé
+        if (!libRegion) {
+          return { index, error: 'Lib_region requis pour les nouveaux departements.' };
+        }
+
+        const matchedRegion = regions.find(r => normalizeName(r.Lib_region) === normalizeName(libRegion));
+        if (!matchedRegion) {
+          return { index, error: `Region introuvable: ${libRegion}` };
+        }
+        const finalRegionId = matchedRegion._id || matchedRegion.id;
+
+        if (!finalRegionId) {
+          return { index, error: 'RegionId requis pour les nouveaux departements.' };
         }
 
         return {
@@ -176,7 +202,7 @@ const DepartementsListPage = () => {
           data: {
             Lib_Departement: libDepartement,
             Cod_departement: codDepartement,
-            RegionId: regionId,
+            RegionId: finalRegionId,
           }
         };
       });
@@ -228,7 +254,7 @@ const DepartementsListPage = () => {
     setFormData({
       Lib_Departement: departement.Lib_Departement || '',
       Cod_departement: departement.Cod_departement || '',
-      RegionId: typeof departement.RegionId === 'object' ? departement.RegionId._id : departement.RegionId,
+      RegionId: departement.RegionId && typeof departement.RegionId === 'object' ? departement.RegionId._id : departement.RegionId,
     });
     setEditDialogOpen(true);
   };
@@ -299,7 +325,7 @@ const DepartementsListPage = () => {
                 <Box>
                   <Typography variant="h6">Importer un fichier Excel</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Modele avec Lib_Departement et Cod_departement.
+                    Modele avec Lib_Departement, Cod_departement et Lib_region (nom de la région).
                   </Typography>
                 </Box>
                 <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={handleDownloadTemplate}>
@@ -331,26 +357,8 @@ const DepartementsListPage = () => {
                     <input type="file" hidden accept=".xlsx,.xls,.csv" onChange={handleImportFileChange} />
                   </Button>
                 </Grid>
-                <Grid item xs={12} md={7}>
-                  <FormControl size="small" fullWidth>
-                    <InputLabel>Region par defaut</InputLabel>
-                    <Select
-                      value={defaultRegionId}
-                      onChange={(e) => setDefaultRegionId(e.target.value)}
-                      label="Region par defaut"
-                      disabled={importIsLoading}
-                    >
-                      <MenuItem value="">Selectionner une region</MenuItem>
-                      {regions.map((r) => (
-                        <MenuItem key={r._id || r.id} value={r._id || r.id}>
-                          {r.Lib_region || '—'}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
                 <Grid item xs={12} md={5}>
-                  <Button variant="contained" onClick={handleImportFile} disabled={importIsLoading || !importFile || !defaultRegionId} fullWidth>
+                  <Button variant="contained" onClick={handleImportFile} disabled={importIsLoading || !importFile} fullWidth>
                     {importIsLoading ? 'Importation...' : 'Importer le fichier'}
                   </Button>
                 </Grid>

@@ -208,6 +208,7 @@ const MenagesListPage = () => {
   useEffect(() => {
     if (formData.SecteurAdministratifId) {
       const filtered = allZonedenombres.filter((z) => z.SecteurAdministratifId === formData.SecteurAdministratifId || z.SecteurAdministratifId?._id === formData.SecteurAdministratifId);
+      console.log('Filtrage Zonedenombres - SecteurAdministratifId:', formData.SecteurAdministratifId, 'Zonedenombres trouvés:', filtered.length);
       setFilteredZonedenombres(filtered);
     } else {
       setFilteredZonedenombres([]);
@@ -235,7 +236,7 @@ const MenagesListPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await menagesAPI.getAll({ limit: 1000 });
+      const data = await menagesAPI.getAll({ limit: 10000000 });
       const menagesArray = Array.isArray(data) ? data : (data?.data || []);
       console.log('loadData - Premier ménage:', menagesArray[0]);
       console.log('loadData - VillageId du premier:', menagesArray[0]?.VillageId);
@@ -267,14 +268,14 @@ const MenagesListPage = () => {
       ] = await Promise.all([
         paysAPI.getLocal(),
         districtAPI.getAll({ limit: 100 }),
-        regionsAPI.getAll({ limit: 100 }),
-        departementsAPI.getAll({ limit: 200 }),
-        sousprefsAPI.getAll({ limit: 500 }),
-        secteursAdministratifsAPI.getAll({ limit: 500 }),
-        zonesdenombreAPI.getAll({ limit: 1000 }),
-        villagesAPI.getAll({ limit: 2000 }),
-        localitesAPI.getAll({ limit: 3000 }),
-        usersAPI.getAll({ limit: 200 }),
+        regionsAPI.getAll({ limit: 10000 }),
+        departementsAPI.getAll({ limit: 200000 }),
+        sousprefsAPI.getAll({ limit: 5000000 }),
+        secteursAdministratifsAPI.getAll({ limit: 500000 }),
+        zonesdenombreAPI.getAll({ limit: 2000000 }),
+        villagesAPI.getAll({ limit: 2000000 }),
+        localitesAPI.getAll({ limit: 3000000 }),
+        usersAPI.getAll({ limit: 2000000 }),
       ]);
       // getLocal() returns a single country object, wrap it in an array
       setPays(paysData?.data ? [paysData.data] : []);
@@ -288,7 +289,7 @@ const MenagesListPage = () => {
       setAllLocalites(Array.isArray(localitesData) ? localitesData : []);
       setEnqueteurs(Array.isArray(usersData) ? usersData : (usersData?.data || []));
       
-      console.log('loadReferenceData - allVillages sample:', (Array.isArray(villagesData?.data) ? villagesData.data : []).slice(0, 2));
+      console.log('loadReferenceData - allZonedenombres sample:', (Array.isArray(zonedenombresData) ? zonedenombresData : []).slice(0, 2));
       console.log('loadReferenceData - allLocalites sample:', (Array.isArray(localitesData) ? localitesData : []).slice(0, 2));
     } catch (err) {
       console.error('Erreur lors du chargement des données de référence:', err);
@@ -390,16 +391,16 @@ const MenagesListPage = () => {
     setSelectedMenage(menage);
     setFormData({
       ...menage,
-      PaysId: typeof menage.PaysId === 'object' ? menage.PaysId._id : menage.PaysId,
-      DistrictId: typeof menage.DistrictId === 'object' ? menage.DistrictId._id : menage.DistrictId,
-      RegionId: typeof menage.RegionId === 'object' ? menage.RegionId._id : menage.RegionId,
-      DepartementId: typeof menage.DepartementId === 'object' ? menage.DepartementId._id : menage.DepartementId,
-      SousprefId: typeof menage.SousprefId === 'object' ? menage.SousprefId._id : menage.SousprefId,
-      SecteurAdministratifId: typeof menage.SecteurAdministratifId === 'object' ? menage.SecteurAdministratifId._id : menage.SecteurAdministratifId,
-      ZonedenombreId: typeof menage.ZonedenombreId === 'object' ? menage.ZonedenombreId._id : menage.ZonedenombreId,
-      VillageId: typeof menage.VillageId === 'object' ? menage.VillageId._id : menage.VillageId,
-      LocaliteId: typeof menage.LocaliteId === 'object' ? menage.LocaliteId._id : menage.LocaliteId,
-      EnqueteurId: typeof menage.EnqueteurId === 'object' ? menage.EnqueteurId._id : menage.EnqueteurId,
+      PaysId: menage.PaysId && typeof menage.PaysId === 'object' ? menage.PaysId._id : menage.PaysId,
+      DistrictId: menage.DistrictId && typeof menage.DistrictId === 'object' ? menage.DistrictId._id : menage.DistrictId,
+      RegionId: menage.RegionId && typeof menage.RegionId === 'object' ? menage.RegionId._id : menage.RegionId,
+      DepartementId: menage.DepartementId && typeof menage.DepartementId === 'object' ? menage.DepartementId._id : menage.DepartementId,
+      SousprefId: menage.SousprefId && typeof menage.SousprefId === 'object' ? menage.SousprefId._id : menage.SousprefId,
+      SecteurAdministratifId: menage.SecteurAdministratifId && typeof menage.SecteurAdministratifId === 'object' ? menage.SecteurAdministratifId._id : menage.SecteurAdministratifId,
+      ZonedenombreId: menage.ZonedenombreId && typeof menage.ZonedenombreId === 'object' ? menage.ZonedenombreId._id : menage.ZonedenombreId,
+      VillageId: menage.VillageId && typeof menage.VillageId === 'object' ? menage.VillageId._id : menage.VillageId,
+      LocaliteId: menage.LocaliteId && typeof menage.LocaliteId === 'object' ? menage.LocaliteId._id : menage.LocaliteId,
+      EnqueteurId: menage.EnqueteurId && typeof menage.EnqueteurId === 'object' ? menage.EnqueteurId._id : menage.EnqueteurId,
       MilieuResidence: menage.MilieuResidence ?? 0,
       CoordonneesGPS: menage.CoordonneesGPS || null,
     });
@@ -416,7 +417,7 @@ const MenagesListPage = () => {
       // Validation des champs obligatoires
       if (!formData.PaysId || !formData.DistrictId || !formData.RegionId || 
           !formData.DepartementId || !formData.SousprefId || !formData.SecteurAdministratifId || 
-          !formData.ZonedenombreId || !formData.VillageId || !formData.LocaliteId || !formData.EnqueteurId) {
+          !formData.ZonedenombreId || !formData.VillageId  || !formData.EnqueteurId) {
         setError('Tous les champs géographiques et l\'enquêteur sont obligatoires');
         return;
       }
@@ -721,11 +722,11 @@ const MenagesListPage = () => {
                     </TableCell>
                     <TableCell>{menage.ContactChefMenage}</TableCell>
                     <TableCell>
-                      {typeof menage.VillageId === 'object' 
+                      {menage.VillageId && typeof menage.VillageId === 'object' 
                         ? menage.VillageId?.Lib_village 
                         : allVillages.find((v) => v.id === menage.VillageId || v._id === menage.VillageId)?.Lib_village || 'N/A'}
                       {' / '}
-                      {typeof menage.LocaliteId === 'object' 
+                      {menage.LocaliteId && typeof menage.LocaliteId === 'object' 
                         ? menage.LocaliteId?.Lib_localite 
                         : allLocalites.find((l) => l.id === menage.LocaliteId || l._id === menage.LocaliteId)?.Lib_localite || 'N/A'}
                     </TableCell>

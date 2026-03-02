@@ -42,7 +42,7 @@ const VillagesListPage = () => {
         const Lib_village = v.Lib_village || '';
         
         // Comparer les IDs correctement (string ou objet)
-        const villageZoneId = typeof v.ZonedenombreId === 'object' ? (v.ZonedenombreId._id || v.ZonedenombreId.id) : v.ZonedenombreId;
+        const villageZoneId = v.ZonedenombreId && typeof v.ZonedenombreId === 'object' ? (v.ZonedenombreId._id || v.ZonedenombreId.id) : v.ZonedenombreId;
         const zoneMatch = !zoneFilter || villageZoneId === zoneFilter;
         
         const searchMatch = !searchTerm || Lib_village.toLowerCase().includes(searchTerm.toLowerCase());
@@ -75,7 +75,7 @@ const VillagesListPage = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await villagesAPI.getAll({ limit: 2000 });
+      const response = await villagesAPI.getAll({ limit: 20000 });
       const data = response.data || response;
       const villagesData = data.items || data || [];
       setVillages(villagesData);
@@ -90,7 +90,7 @@ const VillagesListPage = () => {
 
   const loadZones = async () => {
     try {
-      const response = await zonesdenombreAPI.getAll({ limit: 2000 });
+      const response = await zonesdenombreAPI.getAll({ limit: 200000 });
       const data = response.data || response;
       setZones(data.items || data || []);
     } catch (error) {
@@ -101,7 +101,7 @@ const VillagesListPage = () => {
   const stats = { 
     total: villages.length, 
     zones: new Set(villages.map(v => {
-      const id = typeof v.ZonedenombreId === 'object' ? (v.ZonedenombreId._id || v.ZonedenombreId.id) : v.ZonedenombreId;
+      const id = v.ZonedenombreId && typeof v.ZonedenombreId === 'object' ? (v.ZonedenombreId._id || v.ZonedenombreId.id) : v.ZonedenombreId;
       return id;
     }).filter(Boolean)).size 
   };
@@ -172,6 +172,19 @@ const VillagesListPage = () => {
         throw new Error('Le fichier est vide.');
       }
 
+      const existingKeys = new Set(
+        villages
+          .map((v) => {
+            const villageName = String(v.Lib_village || '').trim().toLowerCase();
+            const zoneId = v.ZonedenombreId && typeof v.ZonedenombreId === 'object'
+              ? String(v.ZonedenombreId._id || v.ZonedenombreId.id || '').trim()
+              : String(v.ZonedenombreId || '').trim();
+            return `${villageName}|${zoneId}`;
+          })
+          .filter(Boolean)
+      );
+      const importedKeys = new Set();
+
       const mappedRows = rows.map((row, index) => {
         const normalizedRow = Object.entries(row).reduce((acc, [key, value]) => {
           acc[normalizeHeader(String(key))] = value;
@@ -188,10 +201,18 @@ const VillagesListPage = () => {
           : null;
         const resolvedZoneId = zoneId
           || (matchedZone ? (matchedZone._id || matchedZone.id) : '');
+        const key = `${libVillage.toLowerCase()}|${resolvedZoneId}`;
 
         if (!libVillage || !resolvedZoneId) {
           return { index, error: 'Lib_village et Lib_ZD sont obligatoires.' };
         }
+
+        if (existingKeys.has(key)) {
+          return { index, error: `Village deja existant dans cette zone: ${libVillage}` };
+        }
+
+
+        importedKeys.add(key);
 
         if (libZone && !matchedZone) {
           return { index, error: `Zone introuvable: ${libZone}` };
@@ -258,7 +279,7 @@ const VillagesListPage = () => {
     setFormData({
       Lib_village: village.Lib_village || '',
       Coordonnee: village.Coordonnee || null,
-      ZonedenombreId: typeof village.ZonedenombreId === 'object' ? (village.ZonedenombreId._id || village.ZonedenombreId.id) : village.ZonedenombreId,
+      ZonedenombreId: village.ZonedenombreId && typeof village.ZonedenombreId === 'object' ? (village.ZonedenombreId._id || village.ZonedenombreId.id) : village.ZonedenombreId,
     });
     setEditDialogOpen(true);
   };

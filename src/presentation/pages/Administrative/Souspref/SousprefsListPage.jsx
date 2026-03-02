@@ -97,7 +97,7 @@ const SousprefsListPage = () => {
         const Cod_Souspref = s.Cod_Souspref || '';
         
         // Comparer les IDs correctement (string ou objet)
-        const sousprefDeptId = typeof s.DepartementId === 'object' ? (s.DepartementId._id || s.DepartementId.id) : s.DepartementId;
+        const sousprefDeptId = s.DepartementId && typeof s.DepartementId === 'object' ? (s.DepartementId._id || s.DepartementId.id) : s.DepartementId;
         const departementMatch = !departementFilter || sousprefDeptId === departementFilter;
         
         const searchMatch = !searchTerm || 
@@ -220,6 +220,13 @@ const SousprefsListPage = () => {
         throw new Error('Le fichier est vide.');
       }
 
+      const existingCodes = new Set(
+        sousprefs
+          .map((s) => String(s.Cod_Souspref || '').trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const importedCodes = new Set();
+
       const mappedRows = rows.map((row, index) => {
         const normalizedRow = Object.entries(row).reduce((acc, [key, value]) => {
           acc[normalizeHeader(String(key))] = value;
@@ -230,6 +237,7 @@ const SousprefsListPage = () => {
         const codSouspref = String(normalizedRow.codsouspref || '').trim();
         const libDepartement = String(normalizedRow.libdepartement || '').trim();
         const departementId = String(normalizedRow.departementid || '').trim();
+        const codeKey = codSouspref.toLowerCase();
 
         const matchedDepartement = libDepartement
           ? departements.find((d) => normalizeName(d.Lib_Departement) === normalizeName(libDepartement))
@@ -240,6 +248,13 @@ const SousprefsListPage = () => {
         if (!libSouspref || !codSouspref || !resolvedDepartementId) {
           return { index, error: 'Lib_Souspref, Cod_Souspref et Lib_Departement sont obligatoires.' };
         }
+
+        if (existingCodes.has(codeKey)) {
+          return { index, error: `Cod_Souspref deja existant: ${codSouspref}` };
+        }
+
+       
+        importedCodes.add(codeKey);
 
         if (libDepartement && !matchedDepartement) {
           return { index, error: `Departement introuvable: ${libDepartement}` };
@@ -321,7 +336,7 @@ const SousprefsListPage = () => {
     setFormData({
       Lib_Souspref: souspref.Lib_Souspref || '',
       Cod_Souspref: souspref.Cod_Souspref || '',
-      DepartementId: typeof souspref.DepartementId === 'object' ? souspref.DepartementId._id : souspref.DepartementId,
+      DepartementId: souspref.DepartementId && typeof souspref.DepartementId === 'object' ? souspref.DepartementId._id : souspref.DepartementId,
     });
     setEditDialogOpen(true);
   };
